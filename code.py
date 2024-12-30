@@ -98,7 +98,7 @@ def handle_text(update: Update, context: CallbackContext):
 def main():
     init_db()
     
-    updater = Updater("7957824599:AAFAvZdMf5dRUz--R-svYg9V-sx61hBx7tY", use_context=True)
+    updater = Updater("8018543300:AAFgcrM7-n7d1kkiO35M96PHp-UCHtVagrU", use_context=True)
     
     dp = updater.dispatcher
     
