@@ -106,6 +106,7 @@ async def agreement(update: Update, context: CallbackContext):
 
 # Настройка webhook для Google Colab
 def setup_webhook():
+    ngrok.set_auth_token("2qw1fsna7oyhzPHjDp8zEO9fBbj_3mMdsbGuXgHSLf16mR5eF")  # Вставьте сюда ваш токен
     public_url = ngrok.connect(5000)
     print(f" * ngrok tunnel \"{public_url}\" -> \"http://127.0.0.1:5000\"")
     bot.set_webhook(public_url + "/webhook")
