@@ -120,7 +120,7 @@ def main():
         entry_points=[CommandHandler('start', start)],
         states={
             EVENT_TYPE: [MessageHandler(filters.TEXT & ~filters.COMMAND, event_type)],
-            TICKET_FILE: [MessageHandler(filters.DOCUMENT, ticket_file)],
+            TICKET_FILE: [MessageHandler(filters.Document(), ticket_file)],  # Исправлено здесь
             PRICE: [MessageHandler(filters.TEXT & ~filters.COMMAND, price)],
             AGREEMENT: [CallbackQueryHandler(agreement)],
         },
