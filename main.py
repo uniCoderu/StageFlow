@@ -113,7 +113,7 @@ def setup_webhook():
 # Основная функция для запуска
 def main():
     # Ваш токен Telegram бота
-    application = Application.builder().token("YOUR_BOT_TOKEN").build()
+    application = Application.builder().token("8018543300:AAFgcrM7-n7d1kkiO35M96PHp-UCHtVagrU").build()
 
     # ConversationHandler для управления состояниями
     conv_handler = ConversationHandler(
