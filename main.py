@@ -115,8 +115,6 @@ def main():
     # Ваш токен Telegram бота
     application = Application.builder().token("YOUR_BOT_TOKEN").build()
 
-    dp = application.dispatcher
-
     # ConversationHandler для управления состояниями
     conv_handler = ConversationHandler(
         entry_points=[CommandHandler('start', start)],
@@ -129,7 +127,7 @@ def main():
         fallbacks=[CommandHandler('settings', settings)],
     )
 
-    dp.add_handler(conv_handler)
+    application.add_handler(conv_handler)
 
     # Запускаем Flask сервер для работы с webhook
     setup_webhook()
