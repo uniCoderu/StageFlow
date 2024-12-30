@@ -1,4 +1,3 @@
-!pip install python-telegram-bot colorlog sqlite3
 import logging
 import sqlite3
 from telegram import Update, ReplyKeyboardMarkup, InlineKeyboardButton, InlineKeyboardMarkup
