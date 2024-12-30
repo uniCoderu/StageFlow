@@ -69,7 +69,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
 # Основная функция
 def main():
     """Запуск бота."""
-    token = "YOUR_BOT_API_KEY"
+    token = "8018543300:AAFgcrM7-n7d1kkiO35M96PHp-UCHtVagrU"
     application = Application.builder().token(token).build()
     
     # Обработчики команд
