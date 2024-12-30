@@ -98,7 +98,7 @@ def handle_text(update: Update, context: CallbackContext):
 def main():
     init_db()
     
-    updater = Updater("YOUR_BOT_API_KEY", use_context=True)
+    updater = Updater("7957824599:AAFAvZdMf5dRUz--R-svYg9V-sx61hBx7tY", use_context=True)
     
     dp = updater.dispatcher
     
