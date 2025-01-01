@@ -1,86 +1,154 @@
 import logging
-import coloredlogs
-from telegram import Update
-from telegram.ext import Application, CommandHandler, MessageHandler, filters, CallbackQueryHandler, ConversationHandler, ContextTypes
-from telegram import ReplyKeyboardMarkup
+from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
+from telegram.ext import Application, CommandHandler, MessageHandler, filters, CallbackQueryHandler, ConversationHandler, CallbackContext
+import nest_asyncio  # Для корректной работы с уже существующим циклом событий в Colab
 
-# Настройка логирования
-coloredlogs.install(level='DEBUG', fmt='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+# Применяем nest_asyncio, чтобы обойти конфликт циклов
+nest_asyncio.apply()
 
-# Константы для состояний
-MENU, SELL_TICKET, SHOW_MARKET, SETTINGS = range(4)
+# Настройки логирования
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger()
 
-# Команды бота
-async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-    """Приветствие пользователя и отображение основного меню."""
-    user = update.message.from_user
-    logging.info(f"User {user.username} started the bot.")
-    
+# Настройки бота
+API_KEY = '8018543300:AAFgcrM7-n7d1kkiO35M96PHp-UCHtVagrU'  # Замените на ваш API ключ
+
+# Состояния для разговоров
+SELECT_MENU, SETTINGS, SELL_TICKET, CHOOSE_EVENT, CONFIRM_SALE, WAITING_FOR_PRICE = range(6)
+
+# Хранилище для пользователей и билетов
+users_data = {}
+tickets_for_sale = {}
+
+# Обработчик команды /start
+async def start(update: Update, context: CallbackContext):
+    user_id = update.message.from_user.id
+    if user_id not in users_data:
+        users_data[user_id] = {'city': '', 'payment_method': '', 'phone': ''}
+
+    # Логируем входное сообщение
+    logger.info(f"User {user_id} started the bot.")
+
+    # Создаем меню
     keyboard = [
-        ['Продать билет', 'Торговая площадка'],
-        ['Настройки', 'Политика'],
+        [InlineKeyboardButton("Продать билет", callback_data='sell_ticket')],
+        [InlineKeyboardButton("Торговая площадка", callback_data='market')],
+        [InlineKeyboardButton("Настройки", callback_data='settings')],
+        [InlineKeyboardButton("Политика конфиденциальности", callback_data='privacy_policy')]
     ]
-    await update.message.reply_text(
-        "Привет! Я бот для продажи билетов на мероприятия. Что вы хотите сделать?",
-        reply_markup=ReplyKeyboardMarkup(keyboard, resize_keyboard=True)
-    )
-    return MENU
+    reply_markup = InlineKeyboardMarkup(keyboard)
 
-# Настройки
-async def settings(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-    """Меню настроек: реквизиты, город и поддержка."""
-    keyboard = [['Сохранить реквизиты', 'Выбрать город', 'Связь с тех. поддержкой']]
-    await update.message.reply_text(
-        "Выберите опцию настройки.",
-        reply_markup=ReplyKeyboardMarkup(keyboard, resize_keyboard=True)
-    )
-    return SETTINGS
+    # Отправляем меню пользователю
+    await update.message.reply_text("Добро пожаловать в бот для перепродажи билетов! Выберите действие:", reply_markup=reply_markup)
 
-# Продажа билета
-async def sell_ticket(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-    """Процесс продажи билета."""
-    await update.message.reply_text(
-        "Пожалуйста, выберите тип мероприятия (например, концерт)."
-    )
-    return SELL_TICKET
+# Обработчик для кнопки "Продать билет"
+async def sell_ticket(update: Update, context: CallbackContext):
+    logger.info("User clicked 'Продать билет'")
 
-# Торговая площадка
-async def show_market(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-    """Показать торговую площадку с билетами."""
-    await update.message.reply_text("Вот доступные билеты. Выберите интересующее вас мероприятие.")
-    return SHOW_MARKET
-
-# Обработчик сообщения
-async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    """Обработка обычных сообщений пользователя."""
-    text = update.message.text
-    logging.debug(f"Received message: {text}")
+    explanation = """
+    🎟️ **Как продать билет**:
     
-    if text == 'Продать билет':
-        return await sell_ticket(update, context)
-    elif text == 'Торговая площадка':
-        return await show_market(update, context)
-    elif text == 'Настройки':
-        return await settings(update, context)
+    1️⃣ **Шаг 1**: Скиньте файл с билетом на мероприятие (фото, скан).
+    
+    2️⃣ **Шаг 2**: Укажите цену, за которую вы хотите продать билет.
+    
+    3️⃣ **Шаг 3**: После этого ваш билет будет выставлен на торговую площадку.
+    
+    После покупки билета мы свяжемся с вами для подтверждения, и вы получите оплату.
+    """
+    await update.callback_query.answer()
+    await update.callback_query.edit_message_text(explanation)
+
+    return WAITING_FOR_PRICE
+
+# Обработчик для получения файла с билетом
+async def receive_ticket_file(update: Update, context: CallbackContext):
+    if update.message.document:
+        user_id = update.message.from_user.id
+        ticket_file = update.message.document
+
+        # Сохраняем билет
+        tickets_for_sale[user_id] = {'file_id': ticket_file.file_id}
+        
+        logger.info(f"User {user_id} uploaded a ticket file.")
+
+        await update.message.reply_text("Билет получен! Теперь укажите цену, за которую вы хотите его продать:")
+
+        return WAITING_FOR_PRICE
     else:
-        await update.message.reply_text("Команда не распознана. Выберите одну из кнопок.")
-        return MENU
+        await update.message.reply_text("Пожалуйста, отправьте файл с билетом.")
+        return WAITING_FOR_PRICE
 
-# Основная функция
-def main():
-    """Запуск бота."""
-    token = "8018543300:AAFgcrM7-n7d1kkiO35M96PHp-UCHtVagrU"
-    application = Application.builder().token(token).build()
-    
-    # Обработчики команд
-    application.add_handler(CommandHandler("start", start))
-    application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
-    
-    # Для перехода по состояниям
-    application.add_handler(CallbackQueryHandler(settings, pattern='^settings$'))
-    
-    # Запуск бота
-    application.run_polling()
+# Обработчик для получения цены билета
+async def receive_price(update: Update, context: CallbackContext):
+    user_id = update.message.from_user.id
+    ticket_price = update.message.text
 
-if __name__ == '__main__':
-    main()
+    try:
+        ticket_price = float(ticket_price)
+        if ticket_price <= 0:
+            raise ValueError("Цена должна быть больше нуля.")
+    except ValueError:
+        await update.message.reply_text("Пожалуйста, введите корректную цену (например, 5000).")
+        return WAITING_FOR_PRICE
+
+    if user_id in tickets_for_sale:
+        tickets_for_sale[user_id]['price'] = ticket_price
+        await update.message.reply_text(f"Вы установили цену на билет: {ticket_price}₽. Билет будет выставлен на торговую площадку.")
+        
+        logger.info(f"User {user_id} set the price: {ticket_price}₽")
+
+        await update.message.reply_text(f"Билет на сумму {ticket_price}₽ теперь доступен на торговой площадке!")
+
+    return SELECT_MENU
+
+# Обработчик для кнопки "Торговая площадка"
+async def show_marketplace(update: Update, context: CallbackContext):
+    user_id = update.message.from_user.id
+    if not tickets_for_sale:
+        await update.message.reply_text("На данный момент нет доступных билетов на продажу.")
+        return
+
+    available_tickets = "\n".join(
+        [f"Билет: {ticket['file_id']} - Цена: {ticket['price']}₽" for ticket in tickets_for_sale.values()]
+    )
+    await update.message.reply_text(f"Доступные билеты:\n{available_tickets}")
+
+# Обработчик для кнопки "Настройки"
+async def settings(update: Update, context: CallbackContext):
+    logger.info("User clicked 'Настройки'")
+
+    keyboard = [
+        [InlineKeyboardButton("Выбрать город", callback_data='choose_city')],
+        [InlineKeyboardButton("Указать реквизиты", callback_data='set_payment')],
+        [InlineKeyboardButton("Связь с тех. поддержкой", callback_data='support')]
+    ]
+    reply_markup = InlineKeyboardMarkup(keyboard)
+    await update.callback_query.edit_message_text("Настройки", reply_markup=reply_markup)
+
+# Главная функция
+async def main():
+    application = Application.builder().token(API_KEY).build()
+
+    # Обработчики кнопок
+    conversation_handler = ConversationHandler(
+        entry_points=[CommandHandler('start', start)],
+        states={
+            SELL_TICKET: [CallbackQueryHandler(sell_ticket, pattern='sell_ticket')],
+            WAITING_FOR_PRICE: [MessageHandler(filters.Document.ALL, receive_ticket_file), MessageHandler(filters.TEXT & ~filters.COMMAND, receive_price)],
+        },
+        fallbacks=[CommandHandler('start', start)],
+    )
+
+    # Обработчик для торговой площадки и настроек
+    application.add_handler(CallbackQueryHandler(show_marketplace, pattern='market'))
+    application.add_handler(CallbackQueryHandler(settings, pattern='settings'))
+
+    # Добавляем ConversationHandler
+    application.add_handler(conversation_handler)
+
+    # Запуск бота с использованием уже существующего цикла событий в Colab
+    await application.run_polling()
+
+# В Google Colab используем уже существующий цикл событий:
+await main()
