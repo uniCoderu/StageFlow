@@ -1,6 +1,8 @@
-import logging
+import nest_asyncio
+import asyncio
 from telegram import Update, InlineKeyboardMarkup, InlineKeyboardButton, ReplyKeyboardMarkup, KeyboardButton
 from telegram.ext import ApplicationBuilder, CommandHandler, CallbackQueryHandler, MessageHandler, filters, ConversationHandler, ContextTypes
+import logging
 from colorlog import ColoredFormatter
 
 # Настройка логирования
@@ -56,7 +58,8 @@ async def settings(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def sell_ticket(update: Update, context: ContextTypes.DEFAULT_TYPE):
     logger.info(f"Пользователь {update.effective_user.id} выбрал продажу билета.")
     await update.message.reply_text(
-        "Отправьте файл билета и укажите его цену.")
+        "Отправьте файл билета и укажите его цену."
+    )
     return SELL_TICKET
 
 # Обработка загрузки билета
@@ -69,8 +72,7 @@ async def handle_ticket(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def view_marketplace(update: Update, context: ContextTypes.DEFAULT_TYPE):
     logger.info(f"Пользователь {update.effective_user.id} просматривает торговую площадку.")
     city = context.user_data.get('city', 'Все города')
-    await update.message.reply_text(f"Список мероприятий в городе {city}:")
-    # Пример мероприятий для теста
+    await update.message.reply_text(f"Список мероприятий в городе {city}:\n")
     events = ["Концерт A", "Концерт B", "Спектакль C"]
     for event in events:
         await update.message.reply_text(event)
@@ -106,9 +108,10 @@ async def main():
 
     application.add_handler(conv_handler)
     application.add_error_handler(error_handler)
-
     await application.run_polling()
 
-if __name__ == '__main__':
-    import asyncio
-    asyncio.run(main())
+# Установка nest_asyncio для работы в Colab
+nest_asyncio.apply()
+
+# Запуск
+asyncio.run(main())
