@@ -150,5 +150,5 @@ async def main():
     # Запуск бота с использованием уже существующего цикла событий в Colab
     await application.run_polling()
 
-# Для Google Colab используем nest_asyncio.run() для запуска асинхронных функций
-nest_asyncio.run(main())
+# В Google Colab можно вызвать await main() напрямую после nest_asyncio.apply()
+await main()
