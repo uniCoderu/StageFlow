@@ -1,6 +1,6 @@
 import logging
 from telegram import Update, InlineKeyboardMarkup, InlineKeyboardButton, ReplyKeyboardMarkup, KeyboardButton
-from telegram.ext import Updater, CommandHandler, CallbackQueryHandler, MessageHandler, Filters, CallbackContext, ConversationHandler
+from telegram.ext import ApplicationBuilder, CommandHandler, CallbackQueryHandler, MessageHandler, filters, ConversationHandler, ContextTypes
 from colorlog import ColoredFormatter
 
 # Настройка логирования
@@ -19,14 +19,14 @@ handler.setFormatter(formatter)
 logging.basicConfig(level=logging.INFO, handlers=[handler])
 logger = logging.getLogger(__name__)
 
-# Задаем токен вашего бота
+# Токен вашего бота
 API_TOKEN = '8018543300:AAFgcrM7-n7d1kkiO35M96PHp-UCHtVagrU'
 
 # Константы для состояний
-MENU, SETTINGS, SELL_TICKET, VIEW_MARKETPLACE, ADMIN_MENU = range(5)
+MENU, SETTINGS, SELL_TICKET, VIEW_MARKETPLACE = range(4)
 
 # Стартовое сообщение
-def start(update: Update, context: CallbackContext) -> int:
+async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     logger.info(f"Пользователь {update.effective_user.id} начал взаимодействие с ботом.")
     buttons = [
         [KeyboardButton("Настройки")],
@@ -34,75 +34,81 @@ def start(update: Update, context: CallbackContext) -> int:
         [KeyboardButton("Политическое соглашение")]
     ]
     reply_markup = ReplyKeyboardMarkup(buttons, resize_keyboard=True)
-    update.message.reply_text(
+    await update.message.reply_text(
         "Привет! Я бот для перепродажи билетов на мероприятия. Вся навигация производится через меню.",
         reply_markup=reply_markup
     )
     return MENU
 
 # Настройки
-def settings(update: Update, context: CallbackContext) -> int:
+async def settings(update: Update, context: ContextTypes.DEFAULT_TYPE):
     logger.info(f"Пользователь {update.effective_user.id} вошел в меню настроек.")
     buttons = [
         [InlineKeyboardButton("Добавить реквизиты", callback_data='add_payment')],
         [InlineKeyboardButton("Выбрать город", callback_data='select_city')],
         [InlineKeyboardButton("Связь с поддержкой", callback_data='support')]
     ]
-    if update.effective_user.id in context.bot_data.get('admins', []):
-        buttons.append([InlineKeyboardButton("Админ меню", callback_data='admin_menu')])
     reply_markup = InlineKeyboardMarkup(buttons)
-    update.message.reply_text("Настройки:", reply_markup=reply_markup)
+    await update.message.reply_text("Настройки:", reply_markup=reply_markup)
     return SETTINGS
 
 # Продажа билета
-def sell_ticket(update: Update, context: CallbackContext) -> int:
+async def sell_ticket(update: Update, context: ContextTypes.DEFAULT_TYPE):
     logger.info(f"Пользователь {update.effective_user.id} выбрал продажу билета.")
-    update.message.reply_text(
-        "Выберите мероприятие и отправьте файл с билетом.")
+    await update.message.reply_text(
+        "Отправьте файл билета и укажите его цену.")
     return SELL_TICKET
 
+# Обработка загрузки билета
+async def handle_ticket(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    logger.info(f"Пользователь {update.effective_user.id} загрузил билет.")
+    await update.message.reply_text("Ваш билет был успешно добавлен на торговую площадку.")
+    return MENU
+
 # Торговая площадка
-def view_marketplace(update: Update, context: CallbackContext) -> int:
+async def view_marketplace(update: Update, context: ContextTypes.DEFAULT_TYPE):
     logger.info(f"Пользователь {update.effective_user.id} просматривает торговую площадку.")
     city = context.user_data.get('city', 'Все города')
-    update.message.reply_text(f"Список мероприятий в городе {city}:")
+    await update.message.reply_text(f"Список мероприятий в городе {city}:")
     # Пример мероприятий для теста
     events = ["Концерт A", "Концерт B", "Спектакль C"]
     for event in events:
-        update.message.reply_text(event)
+        await update.message.reply_text(event)
     return VIEW_MARKETPLACE
 
+# Политическое соглашение
+async def policy(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    await update.message.reply_text("Политическое соглашение: ...")
+    return MENU
+
 # Обработчик ошибок
-def error_handler(update: object, context: CallbackContext) -> None:
+async def error_handler(update: object, context: ContextTypes.DEFAULT_TYPE):
     logger.error(f"Произошла ошибка: {context.error}")
 
 # Основная функция
-def main() -> None:
-    updater = Updater(API_TOKEN)
+async def main():
+    application = ApplicationBuilder().token(API_TOKEN).build()
 
-    dispatcher = updater.dispatcher
-
-    # Обработчики команд
     conv_handler = ConversationHandler(
         entry_points=[CommandHandler("start", start)],
         states={
             MENU: [
-                MessageHandler(Filters.regex("^Настройки$"), settings),
-                MessageHandler(Filters.regex("^Продать билет$"), sell_ticket),
-                MessageHandler(Filters.regex("^Политическое соглашение$"), lambda update, _: update.message.reply_text("Политическое соглашение"))
+                MessageHandler(filters.Regex("^Настройки$"), settings),
+                MessageHandler(filters.Regex("^Продать билет$"), sell_ticket),
+                MessageHandler(filters.Regex("^Политическое соглашение$"), policy)
             ],
             SETTINGS: [CallbackQueryHandler(settings)],
-            SELL_TICKET: [MessageHandler(Filters.document, lambda update, _: update.message.reply_text("Билет загружен."))],
-            VIEW_MARKETPLACE: [MessageHandler(Filters.text & ~Filters.command, view_marketplace)]
+            SELL_TICKET: [MessageHandler(filters.Document.ALL, handle_ticket)],
+            VIEW_MARKETPLACE: [MessageHandler(filters.TEXT & ~filters.COMMAND, view_marketplace)]
         },
         fallbacks=[CommandHandler("start", start)]
     )
 
-    dispatcher.add_handler(conv_handler)
-    dispatcher.add_error_handler(error_handler)
+    application.add_handler(conv_handler)
+    application.add_error_handler(error_handler)
 
-    updater.start_polling()
-    updater.idle()
+    await application.run_polling()
 
 if __name__ == '__main__':
-    main()
+    import asyncio
+    asyncio.run(main())
