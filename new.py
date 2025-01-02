@@ -1,5 +1,6 @@
 import logging
 import sys
+
 try:
     from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
     from telegram.ext import ApplicationBuilder, CommandHandler, CallbackQueryHandler, ContextTypes, MessageHandler, filters
@@ -119,17 +120,7 @@ async def menu_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await query.message.reply_text("Выберите настройку:", reply_markup=reply_markup)
 
     elif query.data == "main_menu":
-        keyboard = [
-            [InlineKeyboardButton("⚙️ Настройки", callback_data="settings")],
-            [InlineKeyboardButton("💳 Продать билет", callback_data="sell_ticket")],
-            [InlineKeyboardButton("📜 Полит. соглашение", callback_data="policy")],
-            [InlineKeyboardButton("🏷️ Торговая площадка", callback_data="marketplace")]
-        ]
-        reply_markup = InlineKeyboardMarkup(keyboard)
-        await query.edit_message_text(
-            "Вы вернулись в главное меню. Используйте кнопки ниже для выбора действия.",
-            reply_markup=reply_markup
-        )
+        await start(update, context)
 
     elif query.data == "edit_payment_details":
         keyboard = [
@@ -207,4 +198,3 @@ if __name__ == "__main__":
             logger.warning("Бот запущен в среде, где уже работает цикл событий. Используется альтернативный запуск.")
             from telegram.ext import asyncio
             asyncio.new_event_loop
-
