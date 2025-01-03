@@ -43,12 +43,16 @@ async def sell_ticket(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int
     return ADD_NAME
 
 async def add_name(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    logging.debug(f"add_name called with update: {update}")
     ticket_name = update.message.text
-    logging.info(f"add_name called. Received ticket name: {ticket_name}")
+    if not ticket_name:
+        logging.error("No ticket name provided.")
+        await update.message.reply_text("Название билета не распознано, попробуйте снова.")
+        return ADD_NAME
     context.user_data['ticket_name'] = ticket_name
+    logging.info(f"Ticket name saved: {ticket_name}")
     await update.message.reply_text("Введите цену билета:")
     return ADD_PRICE
-
     
 async def add_price(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     try:
