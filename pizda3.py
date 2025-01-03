@@ -71,6 +71,38 @@ async def menu_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         reply_markup = InlineKeyboardMarkup(keyboard)
         await query.edit_message_text("Пожалуйста, выберите одну из настроек:", reply_markup=reply_markup)
 
+    elif query.data == "payment_details":
+        user_id = query.from_user.id
+        user_payment_data = user_data.get(user_id, {}).get("payment_details")
+        if user_payment_data:
+            keyboard = [
+                [InlineKeyboardButton("Да", callback_data="edit_payment_details")],
+                [InlineKeyboardButton("Нет", callback_data="settings")]
+            ]
+            reply_markup = InlineKeyboardMarkup(keyboard)
+            await query.edit_message_text(
+                "Ваши реквизиты уже сохранены. Хотите изменить их?", reply_markup=reply_markup
+            )
+        else:
+            keyboard = [
+                [InlineKeyboardButton("СБП", callback_data="sbp")],
+                [InlineKeyboardButton("Номер карты", callback_data="card")]
+            ]
+            reply_markup = InlineKeyboardMarkup(keyboard)
+            await query.edit_message_text("Выберите способ получения оплаты:", reply_markup=reply_markup)
+
+    elif query.data == "sbp":
+        await query.edit_message_text("Введите номер телефона, привязанный к банку:")
+        context.user_data["awaiting_sbp_phone"] = True
+
+    elif query.data == "card":
+        await query.edit_message_text("Введите номер вашей карты:")
+        context.user_data["awaiting_card_number"] = True
+
+    elif query.data == "select_city":
+        await query.edit_message_text("Введите название вашего города:")
+        context.user_data["awaiting_city"] = True
+
     elif query.data == "main_menu":
         await start(update, context)
 
@@ -102,7 +134,7 @@ async def menu_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await query.edit_message_text("Введите вашу цену:")
         context.user_data["awaiting_offer_price"] = True
 
-# Обработка пользовательского ввода для цены
+# Обработка пользовательского ввода для цены и других данных
 async def text_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Обрабатывает текстовые сообщения от пользователя."""
     user_id = update.message.from_user.id
@@ -114,6 +146,27 @@ async def text_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
             context.user_data["awaiting_offer_price"] = False
         except ValueError:
             await update.message.reply_text("Пожалуйста, введите корректное число.")
+
+    elif context.user_data.get("awaiting_sbp_phone"):
+        phone = update.message.text
+        user_data.setdefault(user_id, {})["payment_details"] = {"method": "СБП", "phone": phone}
+        await update.message.reply_text("Ваши реквизиты сохранены! Возвращаю вас в меню настроек.")
+        context.user_data["awaiting_sbp_phone"] = False
+        await start(update, context)
+
+    elif context.user_data.get("awaiting_card_number"):
+        card_number = update.message.text
+        user_data.setdefault(user_id, {})["payment_details"] = {"method": "Номер карты", "card": card_number}
+        await update.message.reply_text("Ваши реквизиты сохранены! Возвращаю вас в меню настроек.")
+        context.user_data["awaiting_card_number"] = False
+        await start(update, context)
+
+    elif context.user_data.get("awaiting_city"):
+        city = update.message.text
+        user_data.setdefault(user_id, {})["city"] = city
+        await update.message.reply_text(f"Ваш город ({city}) сохранен! Возвращаю вас в меню настроек.")
+        context.user_data["awaiting_city"] = False
+        await start(update, context)
 
 # Запуск бота
 async def main():
