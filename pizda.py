@@ -4,7 +4,25 @@ import logging
 
 API_TOKEN = "8018543300:AAFgcrM7-n7d1kkiO35M96PHp-UCHtVagrU"
 
-logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(levelname)s - %(message)s')
+import logging
+import coloredlogs
+
+coloredlogs.install(
+    level='DEBUG',
+    fmt='%(asctime)s - %(levelname)s - %(message)s',
+    level_styles={
+        'debug': {'color': 'cyan'},
+        'info': {'color': 'green'},
+        'warning': {'color': 'yellow'},
+        'error': {'color': 'red'},
+        'critical': {'color': 'magenta', 'bold': True}
+    },
+    field_styles={
+        'asctime': {'color': 'blue'},
+        'levelname': {'bold': True},
+        'message': {'color': 'white'}
+    }
+)
 
 ADD_NAME, ADD_PRICE, ADD_FILE = range(3)
 
