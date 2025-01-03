@@ -1,5 +1,6 @@
 import logging
 import sys
+import os
 
 try:
     from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, InputFile
@@ -34,9 +35,30 @@ logger.setLevel(logging.INFO)
 # Ваш Telegram API ключ
 API_KEY = "8018543300:AAFgcrM7-n7d1kkiO35M96PHp-UCHtVagrU"
 
+# Директория для хранения данных билетов
+TICKETS_DIR = "tickets"
+if not os.path.exists(TICKETS_DIR):
+    os.makedirs(TICKETS_DIR)
+
 # Хранилище данных пользователей
 user_data = {}
 marketplace_data = []  # Глобальное хранилище для выставленных билетов
+
+# Генерация ID билета
+def generate_ticket_id():
+    return f"ticket_{len(marketplace_data) + 1}"
+
+# Сохранение информации о билете в файл
+def save_ticket_info(ticket_id, name, price, file_id):
+    ticket_folder = os.path.join(TICKETS_DIR, ticket_id)
+    if not os.path.exists(ticket_folder):
+        os.makedirs(ticket_folder)
+
+    info_path = os.path.join(ticket_folder, "info.txt")
+    with open(info_path, "w") as f:
+        f.write(f"Название: {name}\n")
+        f.write(f"Цена: {price}\n")
+        f.write(f"ID файла: {file_id}\n")
 
 # Основная команда /start
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -71,34 +93,6 @@ async def menu_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         ]
         reply_markup = InlineKeyboardMarkup(keyboard)
         await query.edit_message_text("Пожалуйста, выберите одну из настроек:", reply_markup=reply_markup)
-
-    elif query.data == "payment_details":
-        user_id = query.from_user.id
-        user_payment_data = user_data.get(user_id, {}).get("payment_details")
-        if user_payment_data:
-            await query.edit_message_text(
-                f"Ваши реквизиты: {user_payment_data}. Вы хотите изменить их?",
-                reply_markup=InlineKeyboardMarkup([
-                    [InlineKeyboardButton("Изменить", callback_data="edit_payment_details")],
-                    [InlineKeyboardButton("Назад", callback_data="settings")]
-                ])
-            )
-        else:
-            await query.edit_message_text(
-                "У вас нет сохраненных реквизитов.",
-                reply_markup=InlineKeyboardMarkup([
-                    [InlineKeyboardButton("Добавить реквизиты", callback_data="edit_payment_details")],
-                    [InlineKeyboardButton("Назад", callback_data="settings")]
-                ])
-            )
-
-    elif query.data == "edit_payment_details":
-        await query.edit_message_text("Введите реквизиты (например, номер карты):")
-        context.user_data["awaiting_payment_details"] = True
-
-    elif query.data == "select_city":
-        await query.edit_message_text("Введите название вашего города:")
-        context.user_data["awaiting_city"] = True
 
     elif query.data == "main_menu":
         await start(update, context)
@@ -136,11 +130,14 @@ async def menu_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     elif query.data.startswith("buy_ticket_"):
         index = int(query.data.split("_")[2])
         ticket = marketplace_data.pop(index)
+        ticket_folder = os.path.join(TICKETS_DIR, ticket["id"])
+        ticket_file_path = os.path.join(ticket_folder, ticket["file_id"])
+
         await query.edit_message_text(
             f"Вы успешно купили билет \"{ticket['name']}\" за {ticket['price']} руб."
         )
-        if ticket.get("file_id"):
-            await query.message.reply_document(document=ticket["file_id"], caption=f"Ваш билет: {ticket['name']}")
+        if os.path.exists(ticket_file_path):
+            await query.message.reply_document(document=ticket_file_path, caption=f"Ваш билет: {ticket['name']}")
         await start(update, context)
 
     elif query.data == "sell_ticket":
@@ -165,9 +162,8 @@ async def text_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     elif context.user_data.get("awaiting_ticket_file"):
         if update.message.document or update.message.photo:
-            user_data[user_id]["ticket_file"] = (
-                update.message.document or update.message.photo[-1].file_id
-            )
+            file_id = update.message.document.file_id if update.message.document else update.message.photo[-1].file_id
+            user_data[user_id]["ticket_file"] = file_id
             context.user_data["awaiting_ticket_file"] = False
             context.user_data["awaiting_ticket_price"] = True
             await update.message.reply_text("Введите цену билета в рублях:")
@@ -177,14 +173,22 @@ async def text_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     elif context.user_data.get("awaiting_ticket_price"):
         try:
             ticket_price = int(update.message.text)
+            ticket_id = generate_ticket_id()
+            ticket_name = user_data[user_id]["ticket_name"]
+            file_id = user_data[user_id]["ticket_file"]
+
             user_ticket = {
-                "name": user_data[user_id]["ticket_name"],
+                "id": ticket_id,
+                "name": ticket_name,
                 "price": ticket_price,
-                "file_id": user_data[user_id].get("ticket_file")
+                "file_id": file_id
             }
             marketplace_data.append(user_ticket)
+
+            save_ticket_info(ticket_id, ticket_name, ticket_price, file_id)
+
             await update.message.reply_text(
-                f"Ваш билет \"{user_ticket['name']}\" успешно выставлен на торговую площадку по цене {ticket_price} руб.!"
+                f"Ваш билет \"{ticket_name}\" успешно выставлен на торговую площадку по цене {ticket_price} руб.!"
             )
             context.user_data["awaiting_ticket_price"] = False
             await start(update, context)
