@@ -2,7 +2,7 @@ import logging
 import sys
 
 try:
-    from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
+    from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, InputFile
     from telegram.ext import ApplicationBuilder, CommandHandler, CallbackQueryHandler, ContextTypes, MessageHandler, filters
 except ModuleNotFoundError:
     sys.stderr.write("Модуль 'telegram' не найден. Установите его командой 'pip install python-telegram-bot' и попробуйте снова.\n")
@@ -72,6 +72,34 @@ async def menu_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         reply_markup = InlineKeyboardMarkup(keyboard)
         await query.edit_message_text("Пожалуйста, выберите одну из настроек:", reply_markup=reply_markup)
 
+    elif query.data == "payment_details":
+        user_id = query.from_user.id
+        user_payment_data = user_data.get(user_id, {}).get("payment_details")
+        if user_payment_data:
+            await query.edit_message_text(
+                f"Ваши реквизиты: {user_payment_data}. Вы хотите изменить их?",
+                reply_markup=InlineKeyboardMarkup([
+                    [InlineKeyboardButton("Изменить", callback_data="edit_payment_details")],
+                    [InlineKeyboardButton("Назад", callback_data="settings")]
+                ])
+            )
+        else:
+            await query.edit_message_text(
+                "У вас нет сохраненных реквизитов.",
+                reply_markup=InlineKeyboardMarkup([
+                    [InlineKeyboardButton("Добавить реквизиты", callback_data="edit_payment_details")],
+                    [InlineKeyboardButton("Назад", callback_data="settings")]
+                ])
+            )
+
+    elif query.data == "edit_payment_details":
+        await query.edit_message_text("Введите реквизиты (например, номер карты):")
+        context.user_data["awaiting_payment_details"] = True
+
+    elif query.data == "select_city":
+        await query.edit_message_text("Введите название вашего города:")
+        context.user_data["awaiting_city"] = True
+
     elif query.data == "main_menu":
         await start(update, context)
 
@@ -107,11 +135,12 @@ async def menu_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     elif query.data.startswith("buy_ticket_"):
         index = int(query.data.split("_")[2])
-        ticket = marketplace_data[index]
-        marketplace_data.pop(index)
+        ticket = marketplace_data.pop(index)
         await query.edit_message_text(
             f"Вы успешно купили билет \"{ticket['name']}\" за {ticket['price']} руб."
         )
+        if ticket.get("file_id"):
+            await query.message.reply_document(document=ticket["file_id"], caption=f"Ваш билет: {ticket['name']}")
         await start(update, context)
 
     elif query.data == "sell_ticket":
@@ -162,18 +191,11 @@ async def text_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         except ValueError:
             await update.message.reply_text("Пожалуйста, введите корректное число для цены билета.")
 
-    elif context.user_data.get("awaiting_sbp_phone"):
-        phone = update.message.text
-        user_data.setdefault(user_id, {})["payment_details"] = {"method": "СБП", "phone": phone}
+    elif context.user_data.get("awaiting_payment_details"):
+        payment_details = update.message.text
+        user_data.setdefault(user_id, {})["payment_details"] = payment_details
         await update.message.reply_text("Ваши реквизиты сохранены! Возвращаю вас в меню настроек.")
-        context.user_data["awaiting_sbp_phone"] = False
-        await start(update, context)
-
-    elif context.user_data.get("awaiting_card_number"):
-        card_number = update.message.text
-        user_data.setdefault(user_id, {})["payment_details"] = {"method": "Номер карты", "card": card_number}
-        await update.message.reply_text("Ваши реквизиты сохранены! Возвращаю вас в меню настроек.")
-        context.user_data["awaiting_card_number"] = False
+        context.user_data["awaiting_payment_details"] = False
         await start(update, context)
 
     elif context.user_data.get("awaiting_city"):
