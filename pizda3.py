@@ -134,6 +134,16 @@ async def menu_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await query.edit_message_text("Введите вашу цену:")
         context.user_data["awaiting_offer_price"] = True
 
+    elif query.data == "sell_ticket":
+        await query.edit_message_text(
+            "Продажа билета:\n"
+            "1️⃣ Отправьте ваш билет на мероприятие (фото или файл).\n"
+            "2️⃣ Укажите цену в рублях.\n"
+            "3️⃣ Билет будет выставлен на торговую площадку.\n\n"
+            "Пожалуйста, отправьте ваш билет:"
+        )
+        context.user_data["awaiting_ticket_file"] = True
+
 # Обработка пользовательского ввода для цены и других данных
 async def text_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Обрабатывает текстовые сообщения от пользователя."""
@@ -168,6 +178,29 @@ async def text_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         context.user_data["awaiting_city"] = False
         await start(update, context)
 
+    elif context.user_data.get("awaiting_ticket_file"):
+        if update.message.document or update.message.photo:
+            user_data.setdefault(user_id, {})["ticket_file"] = (
+                update.message.document or update.message.photo[-1].file_id
+            )
+            await update.message.reply_text("Ваш билет получен! Укажите цену билета в рублях:")
+            context.user_data["awaiting_ticket_file"] = False
+            context.user_data["awaiting_ticket_price"] = True
+        else:
+            await update.message.reply_text("Пожалуйста, отправьте файл или фото билета.")
+
+    elif context.user_data.get("awaiting_ticket_price"):
+        try:
+            price = int(update.message.text)
+            user_data[user_id]["ticket_price"] = price
+            await update.message.reply_text(
+                f"Ваш билет успешно выставлен на торговую площадку по цене {price} руб.!"
+            )
+            context.user_data["awaiting_ticket_price"] = False
+            await start(update, context)
+        except ValueError:
+            await update.message.reply_text("Пожалуйста, введите корректное число для цены билета.")
+
 # Запуск бота
 async def main():
     application = ApplicationBuilder().token(API_KEY).build()
@@ -175,6 +208,7 @@ async def main():
     application.add_handler(CommandHandler("start", start))
     application.add_handler(CallbackQueryHandler(menu_handler))
     application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, text_handler))
+    application.add_handler(MessageHandler(filters.Document.ALL | filters.PHOTO, text_handler))
 
     logger.info("Бот запущен и готов к работе.")
     await application.run_polling()
