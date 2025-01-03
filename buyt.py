@@ -195,19 +195,24 @@ async def sell_ticket_handler(update: Update, context: ContextTypes.DEFAULT_TYPE
 
 # Запуск бота
 async def main():
+    # Создаем приложение
     application = ApplicationBuilder().token(API_KEY).build()
 
+    # Добавляем обработчик команды /start
     application.add_handler(CommandHandler("start", start))
-    application.add_handler(CallbackQueryHandler(menu_handler))
-    application.add_handler(CallbackQueryHandler(sell_ticket_handler, pattern="sell_ticket"))
-    application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, text_handler))
 
+    # Запускаем приложение
+    await application.initialize()
     logger.info("Бот запущен и готов к работе.")
-    await application.initialize()  # Убедитесь, что приложение инициализируется
     await application.start()
-    await application.updater.start_polling()  # Запускаем процесс polling
-    await application.shutdown()  # Корректное завершение работы
+    await application.updater.start_polling()
 
+    # Удерживаем приложение в рабочем состоянии
+    await application.updater.idle()
+
+    # Завершаем работу
+    await application.stop()
+    await application.shutdown()
 
 if __name__ == "__main__":
     import asyncio
@@ -215,6 +220,5 @@ if __name__ == "__main__":
         asyncio.run(main())
     except RuntimeError as e:
         if str(e).startswith("asyncio.run() cannot be called from a running event loop"):
-            logger.warning("Бот запущен в среде, где уже работает цикл событий. Используется альтернативный запуск.")
             loop = asyncio.get_event_loop()
             loop.run_until_complete(main())
