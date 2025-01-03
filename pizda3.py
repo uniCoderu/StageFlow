@@ -72,38 +72,6 @@ async def menu_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         reply_markup = InlineKeyboardMarkup(keyboard)
         await query.edit_message_text("Пожалуйста, выберите одну из настроек:", reply_markup=reply_markup)
 
-    elif query.data == "payment_details":
-        user_id = query.from_user.id
-        user_payment_data = user_data.get(user_id, {}).get("payment_details")
-        if user_payment_data:
-            keyboard = [
-                [InlineKeyboardButton("Да", callback_data="edit_payment_details")],
-                [InlineKeyboardButton("Нет", callback_data="settings")]
-            ]
-            reply_markup = InlineKeyboardMarkup(keyboard)
-            await query.edit_message_text(
-                "Ваши реквизиты уже сохранены. Хотите изменить их?", reply_markup=reply_markup
-            )
-        else:
-            keyboard = [
-                [InlineKeyboardButton("СБП", callback_data="sbp")],
-                [InlineKeyboardButton("Номер карты", callback_data="card")]
-            ]
-            reply_markup = InlineKeyboardMarkup(keyboard)
-            await query.edit_message_text("Выберите способ получения оплаты:", reply_markup=reply_markup)
-
-    elif query.data == "sbp":
-        await query.edit_message_text("Введите номер телефона, привязанный к банку:")
-        context.user_data["awaiting_sbp_phone"] = True
-
-    elif query.data == "card":
-        await query.edit_message_text("Введите номер вашей карты:")
-        context.user_data["awaiting_card_number"] = True
-
-    elif query.data == "select_city":
-        await query.edit_message_text("Введите название вашего города:")
-        context.user_data["awaiting_city"] = True
-
     elif query.data == "main_menu":
         await start(update, context)
 
@@ -125,12 +93,26 @@ async def menu_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     elif query.data.startswith("market_details_"):
         index = int(query.data.split("_")[2])
         ticket = marketplace_data[index]
-        event_details = f"Информация о билете:\nМероприятие: {ticket['name']}\nЦена: {ticket['price']} руб."
+        event_details = (
+            f"Информация о билете:\nМероприятие: {ticket['name']}\n"
+            f"Цена: {ticket['price']} руб.\n"
+            "Вы хотите купить этот билет?"
+        )
         keyboard = [
+            [InlineKeyboardButton("Купить", callback_data=f"buy_ticket_{index}")],
             [InlineKeyboardButton("Назад", callback_data="marketplace")]
         ]
         reply_markup = InlineKeyboardMarkup(keyboard)
         await query.edit_message_text(event_details, reply_markup=reply_markup)
+
+    elif query.data.startswith("buy_ticket_"):
+        index = int(query.data.split("_")[2])
+        ticket = marketplace_data[index]
+        marketplace_data.pop(index)
+        await query.edit_message_text(
+            f"Вы успешно купили билет \"{ticket['name']}\" за {ticket['price']} руб."
+        )
+        await start(update, context)
 
     elif query.data == "sell_ticket":
         await query.edit_message_text(
@@ -149,15 +131,27 @@ async def text_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         ticket_name = update.message.text
         user_data.setdefault(user_id, {})["ticket_name"] = ticket_name
         context.user_data["awaiting_ticket_name"] = False
-        context.user_data["awaiting_ticket_price"] = True
-        await update.message.reply_text("Введите цену билета в рублях:")
+        context.user_data["awaiting_ticket_file"] = True
+        await update.message.reply_text("Пожалуйста, отправьте файл или фото билета:")
+
+    elif context.user_data.get("awaiting_ticket_file"):
+        if update.message.document or update.message.photo:
+            user_data[user_id]["ticket_file"] = (
+                update.message.document or update.message.photo[-1].file_id
+            )
+            context.user_data["awaiting_ticket_file"] = False
+            context.user_data["awaiting_ticket_price"] = True
+            await update.message.reply_text("Введите цену билета в рублях:")
+        else:
+            await update.message.reply_text("Пожалуйста, отправьте файл или фото билета.")
 
     elif context.user_data.get("awaiting_ticket_price"):
         try:
             ticket_price = int(update.message.text)
             user_ticket = {
                 "name": user_data[user_id]["ticket_name"],
-                "price": ticket_price
+                "price": ticket_price,
+                "file_id": user_data[user_id].get("ticket_file")
             }
             marketplace_data.append(user_ticket)
             await update.message.reply_text(
@@ -196,6 +190,7 @@ async def main():
     application.add_handler(CommandHandler("start", start))
     application.add_handler(CallbackQueryHandler(menu_handler))
     application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, text_handler))
+    application.add_handler(MessageHandler(filters.Document.ALL | filters.PHOTO, text_handler))
 
     logger.info("Бот запущен и готов к работе.")
     await application.run_polling()
