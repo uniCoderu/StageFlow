@@ -203,7 +203,11 @@ async def main():
     application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, text_handler))
 
     logger.info("Бот запущен и готов к работе.")
-    await application.run_polling()
+    await application.initialize()  # Убедитесь, что приложение инициализируется
+    await application.start()
+    await application.updater.start_polling()  # Запускаем процесс polling
+    await application.shutdown()  # Корректное завершение работы
+
 
 if __name__ == "__main__":
     import asyncio
@@ -212,5 +216,5 @@ if __name__ == "__main__":
     except RuntimeError as e:
         if str(e).startswith("asyncio.run() cannot be called from a running event loop"):
             logger.warning("Бот запущен в среде, где уже работает цикл событий. Используется альтернативный запуск.")
-            from telegram.ext import asyncio
-            asyncio.new_event_loop
+            loop = asyncio.get_event_loop()
+            loop.run_until_complete(main())
