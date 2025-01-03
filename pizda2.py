@@ -6,7 +6,7 @@ API_TOKEN = "8018543300:AAFgcrM7-n7d1kkiO35M96PHp-UCHtVagrU"
 
 logging.basicConfig(level=logging.INFO)
 
-ADD_TICKET, CONFIRM_PURCHASE = range(2)
+ADD_NAME, ADD_PRICE, ADD_FILE = range(3)
 
 tickets = []
 
@@ -21,14 +21,38 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
 async def sell_ticket(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     query = update.callback_query
     await query.answer()
-    await query.edit_message_text("Введите информацию о билете в формате: название, цена, контакт.")
-    return ADD_TICKET
+    await query.edit_message_text("Введите название билета:")
+    return ADD_NAME
 
-async def add_ticket(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-    ticket_info = update.message.text
-    tickets.append({"info": ticket_info, "seller_id": update.message.from_user.id})
-    await update.message.reply_text("Ваш билет добавлен в список!")
-    return ConversationHandler.END
+async def add_name(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    context.user_data['ticket_name'] = update.message.text
+    await update.message.reply_text("Введите цену билета:")
+    return ADD_PRICE
+
+async def add_price(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    try:
+        context.user_data['ticket_price'] = float(update.message.text)
+        await update.message.reply_text("Загрузите файл с билетом:")
+        return ADD_FILE
+    except ValueError:
+        await update.message.reply_text("Цена должна быть числом. Попробуйте снова:")
+        return ADD_PRICE
+
+async def add_file(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    if update.message.document:
+        ticket_file = update.message.document
+        ticket_data = {
+            "name": context.user_data['ticket_name'],
+            "price": context.user_data['ticket_price'],
+            "file_id": ticket_file.file_id,
+            "seller_id": update.message.from_user.id
+        }
+        tickets.append(ticket_data)
+        await update.message.reply_text("Ваш билет успешно добавлен!")
+        return ConversationHandler.END
+    else:
+        await update.message.reply_text("Пожалуйста, загрузите файл с билетом:")
+        return ADD_FILE
 
 async def list_tickets(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     query = update.callback_query
@@ -40,47 +64,10 @@ async def list_tickets(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
     for idx, ticket in enumerate(tickets):
         keyboard = [[InlineKeyboardButton("Купить", callback_data=f"buy_{idx}")]]
         reply_markup = InlineKeyboardMarkup(keyboard)
-        await query.message.reply_text(f"{idx + 1}. {ticket['info']}", reply_markup=reply_markup)
-
-async def buy_ticket(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-    query = update.callback_query
-    await query.answer()
-
-    ticket_index = int(query.data.split("_")[1])
-    ticket = tickets[ticket_index]
-
-    if query.from_user.id == ticket["seller_id"]:
-        await query.edit_message_text("Вы не можете купить свой собственный билет.")
-        return ConversationHandler.END
-
-    keyboard = [
-        [InlineKeyboardButton("Подтвердить", callback_data=f"confirm_{ticket_index}"),
-         InlineKeyboardButton("Отменить", callback_data="cancel")]
-    ]
-    reply_markup = InlineKeyboardMarkup(keyboard)
-    await query.edit_message_text("Подтвердите покупку билета:", reply_markup=reply_markup)
-    context.user_data["ticket_index"] = ticket_index
-    return CONFIRM_PURCHASE
-
-async def confirm_purchase(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-    query = update.callback_query
-    await query.answer()
-
-    ticket_index = context.user_data.get("ticket_index")
-    ticket = tickets.pop(ticket_index)
-
-    seller_id = ticket["seller_id"]
-    buyer_id = query.from_user.id
-
-    await context.bot.send_message(seller_id, f"Ваш билет куплен! Покупатель: @{query.from_user.username}")
-    await query.edit_message_text("Покупка успешно завершена! Продавец уведомлен.")
-    return ConversationHandler.END
-
-async def cancel_purchase(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-    query = update.callback_query
-    await query.answer()
-    await query.edit_message_text("Покупка отменена.")
-    return ConversationHandler.END
+        await query.message.reply_text(
+            f"{idx + 1}. {ticket['name']} - {ticket['price']} руб.",
+            reply_markup=reply_markup
+        )
 
 async def cancel(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     await update.message.reply_text("Действие отменено.")
@@ -92,11 +79,9 @@ def main() -> None:
     conv_handler = ConversationHandler(
         entry_points=[CommandHandler("start", start)],
         states={
-            ADD_TICKET: [MessageHandler(filters.TEXT & ~filters.COMMAND, add_ticket)],
-            CONFIRM_PURCHASE: [
-                CallbackQueryHandler(confirm_purchase, pattern="confirm_\\d+"),
-                CallbackQueryHandler(cancel_purchase, pattern="cancel")
-            ],
+            ADD_NAME: [MessageHandler(filters.TEXT & ~filters.COMMAND, add_name)],
+            ADD_PRICE: [MessageHandler(filters.TEXT & ~filters.COMMAND, add_price)],
+            ADD_FILE: [MessageHandler(filters.Document.ALL, add_file)],
         },
         fallbacks=[CommandHandler("cancel", cancel)]
     )
