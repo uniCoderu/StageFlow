@@ -169,21 +169,27 @@ async def text_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text("Пожалуйста, отправьте файл или фото билета:")
 
     elif context.user_data.get("awaiting_ticket_file"):
-        if update.message.document:
-            file_id = update.message.document.file_id
-            file_binary = await update.message.document.get_file().download_as_bytearray()
-        elif update.message.photo:
-            file_id = update.message.photo[-1].file_id
-            file_binary = await update.message.photo[-1].get_file().download_as_bytearray()
-        else:
-            await update.message.reply_text("Пожалуйста, отправьте файл или фото билета.")
-            return
+        try:
+            if update.message.document:
+                file = await update.message.document.get_file()
+                file_binary = await file.download_as_bytearray()
+                file_id = update.message.document.file_id
+            elif update.message.photo:
+                file = await update.message.photo[-1].get_file()
+                file_binary = await file.download_as_bytearray()
+                file_id = update.message.photo[-1].file_id
+            else:
+                await update.message.reply_text("Пожалуйста, отправьте файл или фото билета.")
+                return
 
-        user_data[user_id]["ticket_file"] = file_id
-        user_data[user_id]["ticket_file_binary"] = file_binary
-        context.user_data["awaiting_ticket_file"] = False
-        context.user_data["awaiting_ticket_price"] = True
-        await update.message.reply_text("Введите цену билета в рублях:")
+            user_data[user_id]["ticket_file"] = file_id
+            user_data[user_id]["ticket_file_binary"] = file_binary
+            context.user_data["awaiting_ticket_file"] = False
+            context.user_data["awaiting_ticket_price"] = True
+            await update.message.reply_text("Введите цену билета в рублях:")
+        except Exception as e:
+            logger.error(f"Ошибка при обработке файла: {e}")
+            await update.message.reply_text("Произошла ошибка при загрузке файла. Пожалуйста, попробуйте снова.")
 
     elif context.user_data.get("awaiting_ticket_price"):
         try:
