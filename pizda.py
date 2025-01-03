@@ -32,7 +32,7 @@ logger.addHandler(handler)
 logger.setLevel(logging.INFO)
 
 # Ваш Telegram API ключ
-API_KEY = "8168356039:AAFgPgp3_U7cjsa5s7mF3gV6YxuEzj6pbf0"
+API_KEY = "8018543300:AAFgcrM7-n7d1kkiO35M96PHp-UCHtVagrU"
 
 # Хранилище данных пользователей
 user_data = {}
