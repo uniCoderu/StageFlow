@@ -120,7 +120,18 @@ async def menu_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await query.message.reply_text("Выберите настройку:", reply_markup=reply_markup)
 
     elif query.data == "main_menu":
-        await start(update, context)
+        keyboard = [
+            [InlineKeyboardButton("⚙️ Настройки", callback_data="settings")],
+            [InlineKeyboardButton("💳 Продать билет", callback_data="sell_ticket")],
+            [InlineKeyboardButton("📜 Полит. соглашение", callback_data="policy")],
+            [InlineKeyboardButton("🏷️ Торговая площадка", callback_data="marketplace")]
+        ]
+        reply_markup = InlineKeyboardMarkup(keyboard)
+        await query.edit_message_text(
+            "Добро пожаловать! Я бот для безопасной перепродажи билетов на мероприятия.\n"
+            "Используйте меню ниже для выбора нужного действия.",
+            reply_markup=reply_markup
+        )
 
     elif query.data == "edit_payment_details":
         keyboard = [
