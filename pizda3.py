@@ -48,17 +48,24 @@ marketplace_data = []  # Глобальное хранилище для выст
 def generate_ticket_id():
     return f"ticket_{len(marketplace_data) + 1}"
 
-# Сохранение информации о билете в файл
-def save_ticket_info(ticket_id, name, price, file_id):
+# Сохранение информации о билете и файла
+def save_ticket(ticket_id, name, price, file_id, file_binary):
     ticket_folder = os.path.join(TICKETS_DIR, ticket_id)
     if not os.path.exists(ticket_folder):
         os.makedirs(ticket_folder)
 
+    # Сохраняем информацию о билете
     info_path = os.path.join(ticket_folder, "info.txt")
     with open(info_path, "w") as f:
         f.write(f"Название: {name}\n")
         f.write(f"Цена: {price}\n")
         f.write(f"ID файла: {file_id}\n")
+
+    # Сохраняем файл билета
+    file_path = os.path.join(ticket_folder, "ticket_file")
+    with open(file_path, "wb") as f:
+        f.write(file_binary)
+    return file_path
 
 # Основная команда /start
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -131,13 +138,14 @@ async def menu_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         index = int(query.data.split("_")[2])
         ticket = marketplace_data.pop(index)
         ticket_folder = os.path.join(TICKETS_DIR, ticket["id"])
-        ticket_file_path = os.path.join(ticket_folder, ticket["file_id"])
+        ticket_file_path = os.path.join(ticket_folder, "ticket_file")
 
         await query.edit_message_text(
             f"Вы успешно купили билет \"{ticket['name']}\" за {ticket['price']} руб."
         )
         if os.path.exists(ticket_file_path):
-            await query.message.reply_document(document=ticket_file_path, caption=f"Ваш билет: {ticket['name']}")
+            with open(ticket_file_path, "rb") as f:
+                await query.message.reply_document(document=f, caption=f"Ваш билет: {ticket['name']}")
         await start(update, context)
 
     elif query.data == "sell_ticket":
@@ -161,14 +169,21 @@ async def text_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text("Пожалуйста, отправьте файл или фото билета:")
 
     elif context.user_data.get("awaiting_ticket_file"):
-        if update.message.document or update.message.photo:
-            file_id = update.message.document.file_id if update.message.document else update.message.photo[-1].file_id
-            user_data[user_id]["ticket_file"] = file_id
-            context.user_data["awaiting_ticket_file"] = False
-            context.user_data["awaiting_ticket_price"] = True
-            await update.message.reply_text("Введите цену билета в рублях:")
+        if update.message.document:
+            file_id = update.message.document.file_id
+            file_binary = await update.message.document.get_file().download_as_bytearray()
+        elif update.message.photo:
+            file_id = update.message.photo[-1].file_id
+            file_binary = await update.message.photo[-1].get_file().download_as_bytearray()
         else:
             await update.message.reply_text("Пожалуйста, отправьте файл или фото билета.")
+            return
+
+        user_data[user_id]["ticket_file"] = file_id
+        user_data[user_id]["ticket_file_binary"] = file_binary
+        context.user_data["awaiting_ticket_file"] = False
+        context.user_data["awaiting_ticket_price"] = True
+        await update.message.reply_text("Введите цену билета в рублях:")
 
     elif context.user_data.get("awaiting_ticket_price"):
         try:
@@ -176,16 +191,18 @@ async def text_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
             ticket_id = generate_ticket_id()
             ticket_name = user_data[user_id]["ticket_name"]
             file_id = user_data[user_id]["ticket_file"]
+            file_binary = user_data[user_id]["ticket_file_binary"]
+
+            ticket_file_path = save_ticket(ticket_id, ticket_name, ticket_price, file_id, file_binary)
 
             user_ticket = {
                 "id": ticket_id,
                 "name": ticket_name,
                 "price": ticket_price,
-                "file_id": file_id
+                "file_id": file_id,
+                "file_path": ticket_file_path
             }
             marketplace_data.append(user_ticket)
-
-            save_ticket_info(ticket_id, ticket_name, ticket_price, file_id)
 
             await update.message.reply_text(
                 f"Ваш билет \"{ticket_name}\" успешно выставлен на торговую площадку по цене {ticket_price} руб.!"
