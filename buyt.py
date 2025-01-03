@@ -205,14 +205,16 @@ async def main():
     await application.initialize()
     logger.info("Бот запущен и готов к работе.")
     await application.start()
-    await application.updater.start_polling()
 
-    # Удерживаем приложение в рабочем состоянии
-    await application.updater.idle()
-
-    # Завершаем работу
-    await application.stop()
-    await application.shutdown()
+    # Удерживаем приложение активным
+    try:
+        await application.updater.start_polling()
+    except (KeyboardInterrupt, SystemExit):
+        logger.info("Бот остановлен пользователем.")
+    finally:
+        # Завершаем работу
+        await application.stop()
+        await application.shutdown()
 
 if __name__ == "__main__":
     import asyncio
