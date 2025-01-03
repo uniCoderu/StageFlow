@@ -106,7 +106,6 @@ async def main():
     application = ApplicationBuilder().token(API_KEY).build()
 
     application.add_handler(CommandHandler("start", start))
-    application.add_handler(CallbackQueryHandler(menu_handler))
     application.add_handler(CallbackQueryHandler(marketplace_handler, pattern="marketplace"))
     application.add_handler(CallbackQueryHandler(event_details, pattern="market_details_.*"))
     application.add_handler(CallbackQueryHandler(offer_price, pattern="offer_price"))
@@ -114,6 +113,7 @@ async def main():
 
     logger.info("Бот запущен и готов к работе.")
     await application.run_polling()
+
 
 if __name__ == "__main__":
     import nest_asyncio
