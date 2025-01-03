@@ -4,7 +4,7 @@ import logging
 
 API_TOKEN = "8018543300:AAFgcrM7-n7d1kkiO35M96PHp-UCHtVagrU"
 
-logging.basicConfig(level=logging.INFO)
+logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(levelname)s - %(message)s')
 
 ADD_NAME, ADD_PRICE, ADD_FILE = range(3)
 
@@ -26,8 +26,8 @@ async def sell_ticket(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int
 
 async def add_name(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     ticket_name = update.message.text
-    context.user_data['ticket_name'] = ticket_name  # Сохраняем название билета
-    logging.info(f"Received ticket name: {ticket_name}")
+    logging.info(f"add_name called. Received ticket name: {ticket_name}")
+    context.user_data['ticket_name'] = ticket_name
     await update.message.reply_text("Введите цену билета:")
     return ADD_PRICE
 
@@ -35,8 +35,8 @@ async def add_name(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
 async def add_price(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     try:
         price = float(update.message.text)
-        context.user_data['ticket_price'] = price  # Сохраняем цену билета
-        logging.info(f"Received ticket price: {price}")
+        context.user_data['ticket_price'] = price
+        logging.info(f"add_price called. Ticket data so far: {context.user_data}")
         await update.message.reply_text("Загрузите файл с билетом:")
         return ADD_FILE
     except ValueError:
@@ -47,12 +47,13 @@ async def add_file(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     if update.message.document:
         ticket_file = update.message.document
         ticket_data = {
-            "name": context.user_data['ticket_name'],
-            "price": context.user_data['ticket_price'],
+            "name": context.user_data.get('ticket_name', 'Не указано'),
+            "price": context.user_data.get('ticket_price', 'Не указано'),
             "file_id": ticket_file.file_id,
             "seller_id": update.message.from_user.id
         }
         tickets.append(ticket_data)
+        logging.info(f"add_file called. Final ticket data: {ticket_data}")
         await update.message.reply_text("Ваш билет успешно добавлен!")
         return ConversationHandler.END
     else:
