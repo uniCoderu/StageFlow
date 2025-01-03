@@ -1,96 +1,126 @@
-from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
-from telegram.ext import ApplicationBuilder, CommandHandler, CallbackQueryHandler, MessageHandler, filters, ConversationHandler, ContextTypes
 import logging
+import sys
 
-API_TOKEN = "8018543300:AAFgcrM7-n7d1kkiO35M96PHp-UCHtVagrU"
+try:
+    from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
+    from telegram.ext import ApplicationBuilder, CommandHandler, CallbackQueryHandler, ContextTypes, MessageHandler, filters
+except ModuleNotFoundError:
+    sys.stderr.write("Модуль 'telegram' не найден. Установите его командой 'pip install python-telegram-bot' и попробуйте снова.\n")
+    sys.exit(1)
 
-logging.basicConfig(level=logging.INFO)
+# Настраиваем логирование
+class CustomFormatter(logging.Formatter):
+    def format(self, record):
+        record.msg = f"{record.msg}"
+        return super().format(record)
 
-ADD_NAME, ADD_PRICE, ADD_FILE = range(3)
+formatter = CustomFormatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s")
+handler = logging.StreamHandler()
+handler.setFormatter(formatter)
+logger = logging.getLogger(__name__)
+logger.addHandler(handler)
+logger.setLevel(logging.INFO)
 
-tickets = []
+# Ваш Telegram API ключ
+API_KEY = "8018543300:AAFgcrM7-n7d1kkiO35M96PHp-UCHtVagrU"
 
-async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+# Хранилище данных пользователей
+user_data = {}
+
+# Основная команда /start
+async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Обрабатывает команду /start и выводит приветственное сообщение."""
     keyboard = [
-        [InlineKeyboardButton("Купить билет", callback_data="buy_ticket")],
-        [InlineKeyboardButton("Продать билет", callback_data="sell_ticket")]
+        [InlineKeyboardButton("Настройки", callback_data="settings")],
+        [InlineKeyboardButton("Продать билет", callback_data="sell_ticket")],
+        [InlineKeyboardButton("Политика соглашения", callback_data="policy")],
+        [InlineKeyboardButton("Торговая площадка", callback_data="marketplace")]
     ]
     reply_markup = InlineKeyboardMarkup(keyboard)
-    await update.message.reply_text("Добро пожаловать в маркетплейс билетов! Выберите действие:", reply_markup=reply_markup)
 
-async def sell_ticket(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-    query = update.callback_query
-    await query.answer()
-    await query.edit_message_text("Введите название билета:")
-    return ADD_NAME
-
-async def add_name(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-    context.user_data['ticket_name'] = update.message.text
-    await update.message.reply_text("Введите цену билета:")
-    return ADD_PRICE
-
-async def add_price(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-    try:
-        context.user_data['ticket_price'] = float(update.message.text)
-        await update.message.reply_text("Загрузите файл с билетом:")
-        return ADD_FILE
-    except ValueError:
-        await update.message.reply_text("Цена должна быть числом. Попробуйте снова:")
-        return ADD_PRICE
-
-async def add_file(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-    if update.message.document:
-        ticket_file = update.message.document
-        ticket_data = {
-            "name": context.user_data['ticket_name'],
-            "price": context.user_data['ticket_price'],
-            "file_id": ticket_file.file_id,
-            "seller_id": update.message.from_user.id
-        }
-        tickets.append(ticket_data)
-        await update.message.reply_text("Ваш билет успешно добавлен!")
-        return ConversationHandler.END
-    else:
-        await update.message.reply_text("Пожалуйста, загрузите файл с билетом:")
-        return ADD_FILE
-
-async def list_tickets(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    query = update.callback_query
-    await query.answer()
-    if not tickets:
-        await query.edit_message_text("Сейчас нет доступных билетов.")
-        return
-
-    for idx, ticket in enumerate(tickets):
-        keyboard = [[InlineKeyboardButton("Купить", callback_data=f"buy_{idx}")]]
-        reply_markup = InlineKeyboardMarkup(keyboard)
-        await query.message.reply_text(
-            f"{idx + 1}. {ticket['name']} - {ticket['price']} руб.",
+    if update.message:
+        await update.message.reply_text(
+            "Добро пожаловать! Я бот для безопасной перепродажи билетов на мероприятия.\n"
+            "Используйте меню ниже для выбора нужного действия.",
             reply_markup=reply_markup
         )
 
-async def cancel(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-    await update.message.reply_text("Действие отменено.")
-    return ConversationHandler.END
+# Добавление функциональности торговой площадки
+async def marketplace_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Обрабатывает нажатие на кнопку 'Торговая площадка'."""
+    query = update.callback_query
+    await query.answer()
 
-def main() -> None:
-    application = ApplicationBuilder().token(API_TOKEN).build()
+    # Заглушка для списка билетов
+    tickets = [
+        {"event": "Концерт группы XYZ", "price": 2000, "details": "market_details_1"},
+        {"event": "Футбольный матч", "price": 1500, "details": "market_details_2"},
+    ]
 
-    conv_handler = ConversationHandler(
-        entry_points=[CommandHandler("start", start)],
-        states={
-            ADD_NAME: [MessageHandler(filters.TEXT & ~filters.COMMAND, add_name)],
-            ADD_PRICE: [MessageHandler(filters.TEXT & ~filters.COMMAND, add_price)],
-            ADD_FILE: [MessageHandler(filters.Document.ALL, add_file)],
-        },
-        fallbacks=[CommandHandler("cancel", cancel)]
-    )
+    ticket_buttons = [
+        [InlineKeyboardButton(f"{ticket['event']} - {ticket['price']} руб.", callback_data=ticket["details"])]
+        for ticket in tickets
+    ]
+    ticket_buttons.append([InlineKeyboardButton("Назад", callback_data="main_menu")])
 
-    application.add_handler(conv_handler)
-    application.add_handler(CallbackQueryHandler(sell_ticket, pattern="sell_ticket"))
-    application.add_handler(CallbackQueryHandler(list_tickets, pattern="buy_ticket"))
+    reply_markup = InlineKeyboardMarkup(ticket_buttons)
+    await query.edit_message_text("Список доступных билетов:", reply_markup=reply_markup)
 
-    application.run_polling()
+# Просмотр информации о мероприятии
+async def event_details(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Показывает полную информацию о мероприятии и позволяет предложить свою цену."""
+    query = update.callback_query
+    await query.answer()
+
+    event_details = "Это пример полной информации о мероприятии."
+    keyboard = [
+        [InlineKeyboardButton("Предложить свою цену", callback_data="offer_price")],
+        [InlineKeyboardButton("Назад", callback_data="marketplace")]
+    ]
+    reply_markup = InlineKeyboardMarkup(keyboard)
+
+    await query.edit_message_text(event_details, reply_markup=reply_markup)
+
+# Обработка предложения цены
+async def offer_price(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Позволяет пользователю предложить свою цену за билет."""
+    query = update.callback_query
+    await query.answer()
+
+    await query.edit_message_text("Введите вашу цену:")
+    context.user_data["awaiting_offer_price"] = True
+
+# Обработка пользовательского ввода для цены
+async def handle_offer_price(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Сохраняет предложенную цену пользователя."""
+    if context.user_data.get("awaiting_offer_price"):
+        try:
+            offered_price = int(update.message.text)
+            await update.message.reply_text(f"Ваша цена {offered_price} руб. отправлена продавцу!")
+            context.user_data["awaiting_offer_price"] = False
+        except ValueError:
+            await update.message.reply_text("Пожалуйста, введите корректное число.")
+
+# Добавляем обработчики
+async def main():
+    application = ApplicationBuilder().token(API_KEY).build()
+
+    application.add_handler(CommandHandler("start", start))
+    application.add_handler(CallbackQueryHandler(menu_handler))
+    application.add_handler(CallbackQueryHandler(marketplace_handler, pattern="marketplace"))
+    application.add_handler(CallbackQueryHandler(event_details, pattern="market_details_.*"))
+    application.add_handler(CallbackQueryHandler(offer_price, pattern="offer_price"))
+    application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_offer_price))
+
+    logger.info("Бот запущен и готов к работе.")
+    await application.run_polling()
 
 if __name__ == "__main__":
-    main()
+    import nest_asyncio
+    import asyncio
+
+    nest_asyncio.apply()
+    try:
+        asyncio.get_event_loop().run_until_complete(main())
+    except RuntimeError as e:
+        logger.error(f"Ошибка запуска: {e}")
