@@ -25,15 +25,16 @@ async def sell_ticket(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int
     return ADD_NAME
 
 async def add_name(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-    context.user_data['ticket_name'] = update.message.text
+    logging.info(f"Received ticket name: {update.message.text}")
     await update.message.reply_text("Введите цену билета:")
     return ADD_PRICE
-
+    
 async def add_price(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     try:
-        context.user_data['ticket_price'] = float(update.message.text)
-        await update.message.reply_text("Загрузите файл с билетом:")
-        return ADD_FILE
+        price = float(update.message.text)
+        logging.info(f"Received ticket price: {price}")
+        await update.message.reply_text("Билет добавлен успешно!")
+        return ConversationHandler.END
     except ValueError:
         await update.message.reply_text("Цена должна быть числом. Попробуйте снова:")
         return ADD_PRICE
