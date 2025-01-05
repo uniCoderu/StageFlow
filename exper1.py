@@ -145,6 +145,37 @@ async def menu_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
         context.user_data["awaiting_ticket_name"] = True
 
+# Обработчик текстовых сообщений
+async def text_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Обрабатывает текстовые сообщения от пользователя."""
+    user_id = update.message.from_user.id
+
+    if context.user_data.get("awaiting_ticket_name"):
+        ticket_name = update.message.text
+        context.user_data["ticket_name"] = ticket_name
+        context.user_data["awaiting_ticket_name"] = False
+
+        await update.message.reply_text(
+            "Ваш билет: {ticket_name}\n"
+            "Введите цену билета в рублях:"
+        )
+        context.user_data["awaiting_ticket_price"] = True
+
+    elif context.user_data.get("awaiting_ticket_price"):
+        try:
+            ticket_price = int(update.message.text)
+            ticket_name = context.user_data.get("ticket_name", "")
+
+            ticket_id = generate_ticket_id()
+            marketplace_data.append({"id": ticket_id, "name": ticket_name, "price": ticket_price})
+
+            await update.message.reply_text(
+                f"Билет \"{ticket_name}\" успешно выставлен на торговую площадку по цене {ticket_price} руб.!"
+            )
+            context.user_data["awaiting_ticket_price"] = False
+        except ValueError:
+            await update.message.reply_text("Пожалуйста, введите корректное значение цены.")
+
 # Запуск бота
 async def main():
     application = ApplicationBuilder().token(API_KEY).build()
@@ -152,7 +183,6 @@ async def main():
     application.add_handler(CommandHandler("start", start))
     application.add_handler(CallbackQueryHandler(menu_handler))
     application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, text_handler))
-    application.add_handler(MessageHandler(filters.Document.ALL | filters.PHOTO, text_handler))
 
     logger.info("Бот запущен и готов к работе.")
     await application.run_polling()
