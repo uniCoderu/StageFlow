@@ -1,3 +1,6 @@
+import nest_asyncio
+nest_asyncio.apply()
+
 import logging
 import sys
 import os
@@ -201,10 +204,8 @@ async def main():
     await application.run_polling()
 
 if __name__ == "__main__":
-    import nest_asyncio
     import asyncio
 
-    nest_asyncio.apply()
     try:
         asyncio.get_event_loop().run_until_complete(main())
     except RuntimeError as e:
