@@ -1,6 +1,7 @@
 import logging
 import sys
 import os
+import requests
 
 try:
     from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, InputFile
@@ -35,6 +36,10 @@ logger.setLevel(logging.INFO)
 # Ваш Telegram API ключ
 API_KEY = "8018543300:AAFgcrM7-n7d1kkiO35M96PHp-UCHtVagrU"
 
+# Ключ для PayMaster API
+PAYMASTER_API_KEY = "1744374395:TEST:236438f0df3db3a23dd9"
+PAYMASTER_BASE_URL = "https://paymaster.ru/api/v1/"  # Замените на актуальный URL, если он другой.
+
 # Директория для хранения данных билетов
 TICKETS_DIR = "tickets"
 if not os.path.exists(TICKETS_DIR):
@@ -47,6 +52,39 @@ marketplace_data = []  # Глобальное хранилище для выст
 # Генерация ID билета
 def generate_ticket_id():
     return f"ticket_{len(marketplace_data) + 1}"
+
+# Генерация уникального номера заказа
+def generate_order_id():
+    return f"order_{len(marketplace_data) + 1}"
+
+# Создание платежа через PayMaster
+def create_payment(ticket_name, ticket_price, order_id, return_url):
+    """
+    Создает платеж в системе PayMaster.
+    :param ticket_name: Название билета
+    :param ticket_price: Цена билета
+    :param order_id: Уникальный номер заказа
+    :param return_url: URL для возврата после оплаты
+    :return: Ссылка для оплаты
+    """
+    url = f"{PAYMASTER_BASE_URL}payment/create"
+    headers = {
+        "Authorization": f"Bearer {PAYMASTER_API_KEY}",
+        "Content-Type": "application/json"
+    }
+    data = {
+        "order_id": order_id,
+        "amount": ticket_price,
+        "description": f"Покупка билета: {ticket_name}",
+        "return_url": return_url
+    }
+
+    response = requests.post(url, headers=headers, json=data)
+    if response.status_code == 200:
+        return response.json().get("payment_url")
+    else:
+        logger.error(f"Ошибка при создании платежа: {response.json()}")
+        return None
 
 # Сохранение информации о билете и файла
 def save_ticket(ticket_id, name, price, file_id, file_binary):
@@ -136,17 +174,18 @@ async def menu_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     elif query.data.startswith("buy_ticket_"):
         index = int(query.data.split("_")[2])
-        ticket = marketplace_data.pop(index)
-        ticket_folder = os.path.join(TICKETS_DIR, ticket["id"])
-        ticket_file_path = os.path.join(ticket_folder, "ticket_file")
+        ticket = marketplace_data[index]
+        order_id = generate_order_id()
+        return_url = "https://your-website.com/payment/success"  # Укажите ваш URL для возврата.
 
-        await query.edit_message_text(
-            f"Вы успешно купили билет \"{ticket['name']}\" за {ticket['price']} руб."
-        )
-        if os.path.exists(ticket_file_path):
-            with open(ticket_file_path, "rb") as f:
-                await query.message.reply_document(document=f, caption=f"Ваш билет: {ticket['name']}")
-        await start(update, context)
+        payment_url = create_payment(ticket["name"], ticket["price"], order_id, return_url)
+        if payment_url:
+            await query.edit_message_text(
+                f"Для оплаты билета \"{ticket['name']}\" перейдите по ссылке: [Оплатить]({payment_url})",
+                parse_mode="Markdown"
+            )
+        else:
+            await query.edit_message_text("Произошла ошибка при создании платежа. Попробуйте позже.")
 
     elif query.data == "sell_ticket":
         await query.edit_message_text(
