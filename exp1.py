@@ -79,12 +79,18 @@ def create_payment(ticket_name, ticket_price, order_id, return_url):
         "return_url": return_url
     }
 
-    response = requests.post(url, headers=headers, json=data)
-    if response.status_code == 200:
-        return response.json().get("payment_url")
-    else:
-        logger.error(f"Ошибка при создании платежа: {response.json()}")
-        return None
+    try:
+        response = requests.post(url, headers=headers, json=data)
+        if response.status_code == 200:
+            try:
+                return response.json().get("payment_url")
+            except ValueError:
+                logger.error(f"Сервер вернул невалидный JSON: {response.text}")
+        else:
+            logger.error(f"Ошибка при создании платежа. Код: {response.status_code}, Ответ: {response.text}")
+    except requests.RequestException as e:
+        logger.error(f"Ошибка соединения с PayMaster: {e}")
+    return None
 
 # Сохранение информации о билете и файла
 def save_ticket(ticket_id, name, price, file_id, file_binary):
