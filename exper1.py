@@ -207,6 +207,12 @@ if __name__ == "__main__":
     import asyncio
 
     try:
-        asyncio.get_event_loop().run_until_complete(main())
+        asyncio.run(main())
     except RuntimeError as e:
-        logger.error(f"Ошибка запуска: {e}")
+        if "This event loop is already running" in str(e):
+            logger.warning("Цикл событий уже активен. Используется альтернативный запуск.")
+            loop = asyncio.get_event_loop()
+            loop.create_task(main())
+            loop.run_forever()
+        else:
+            logger.error(f"Ошибка выполнения: {e}")
