@@ -55,9 +55,9 @@ def generate_ticket_id():
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Обрабатывает команду /start и выводит приветственное сообщение."""
     keyboard = [
-        [InlineKeyboardButton("🏷️ Торговая площадка", callback_data="marketplace_menu")],
-        [InlineKeyboardButton("📜 Полит. соглашение", callback_data="policy")],
-        [InlineKeyboardButton("⚙️ Настройки", callback_data="settings")]
+        [InlineKeyboardButton("\ud83c\udfe7 Торговая площадка", callback_data="marketplace_menu")],
+        [InlineKeyboardButton("\ud83d\udcdc Полит. соглашение", callback_data="policy")],
+        [InlineKeyboardButton("\u2699\ufe0f Настройки", callback_data="settings")]
     ]
     reply_markup = InlineKeyboardMarkup(keyboard)
 
@@ -76,10 +76,10 @@ async def menu_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     if query.data == "settings":
         keyboard = [
-            [InlineKeyboardButton("💰 Реквизиты", callback_data="payment_details")],
-            [InlineKeyboardButton("🌍 Выбор города", callback_data="select_city")],
-            [InlineKeyboardButton("📞 Техническая поддержка", url="https://t.me/monekeny")],
-            [InlineKeyboardButton("🔙 Назад", callback_data="main_menu")]
+            [InlineKeyboardButton("\ud83d\udcb0 Реквизиты", callback_data="payment_details")],
+            [InlineKeyboardButton("\ud83c\udf10 Выбор города", callback_data="select_city")],
+            [InlineKeyboardButton("\ud83d\udcde Техническая поддержка", url="https://t.me/monekeny")],
+            [InlineKeyboardButton("\u2b05\ufe0f Назад", callback_data="main_menu")]
         ]
         reply_markup = InlineKeyboardMarkup(keyboard)
         await query.edit_message_text("Пожалуйста, выберите одну из настроек:", reply_markup=reply_markup)
@@ -125,10 +125,10 @@ async def menu_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         # Возвращаем пользователя в меню настроек
         keyboard = [
-            [InlineKeyboardButton("💰 Реквизиты", callback_data="payment_details")],
-            [InlineKeyboardButton("🌍 Выбор города", callback_data="select_city")],
-            [InlineKeyboardButton("📞 Техническая поддержка", url="https://t.me/monekeny")],
-            [InlineKeyboardButton("🔙 Назад", callback_data="main_menu")]
+            [InlineKeyboardButton("\ud83d\udcb0 Реквизиты", callback_data="payment_details")],
+            [InlineKeyboardButton("\ud83c\udf10 Выбор города", callback_data="select_city")],
+            [InlineKeyboardButton("\ud83d\udcde Техническая поддержка", url="https://t.me/monekeny")],
+            [InlineKeyboardButton("\u2b05\ufe0f Назад", callback_data="main_menu")]
         ]
         reply_markup = InlineKeyboardMarkup(keyboard)
         await query.message.reply_text("Выберите настройку:", reply_markup=reply_markup)
@@ -169,10 +169,10 @@ async def text_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         context.user_data["awaiting_card_number"] = False
 
         keyboard = [
-            [InlineKeyboardButton("💰 Реквизиты", callback_data="payment_details")],
-            [InlineKeyboardButton("🌍 Выбор города", callback_data="select_city")],
-            [InlineKeyboardButton("📞 Техническая поддержка", url="https://t.me/monekeny")],
-            [InlineKeyboardButton("🔙 Назад", callback_data="main_menu")]
+            [InlineKeyboardButton("\ud83d\udcb0 Реквизиты", callback_data="payment_details")],
+            [InlineKeyboardButton("\ud83c\udf10 Выбор города", callback_data="select_city")],
+            [InlineKeyboardButton("\ud83d\udcde Техническая поддержка", url="https://t.me/monekeny")],
+            [InlineKeyboardButton("\u2b05\ufe0f Назад", callback_data="main_menu")]
         ]
         reply_markup = InlineKeyboardMarkup(keyboard)
         await update.message.reply_text("Выберите настройку:", reply_markup=reply_markup)
@@ -184,10 +184,10 @@ async def text_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         context.user_data["awaiting_city"] = False
 
         keyboard = [
-            [InlineKeyboardButton("💰 Реквизиты", callback_data="payment_details")],
-            [InlineKeyboardButton("🌍 Выбор города", callback_data="select_city")],
-            [InlineKeyboardButton("📞 Техническая поддержка", url="https://t.me/monekeny")],
-            [InlineKeyboardButton("🔙 Назад", callback_data="main_menu")]
+            [InlineKeyboardButton("\ud83d\udcb0 Реквизиты", callback_data="payment_details")],
+            [InlineKeyboardButton("\ud83c\udf10 Выбор города", callback_data="select_city")],
+            [InlineKeyboardButton("\ud83d\udcde Техническая поддержка", url="https://t.me/monekeny")],
+            [InlineKeyboardButton("\u2b05\ufe0f Назад", callback_data="main_menu")]
         ]
         reply_markup = InlineKeyboardMarkup(keyboard)
         await update.message.reply_text("Выберите настройку:", reply_markup=reply_markup)
@@ -207,6 +207,10 @@ if __name__ == "__main__":
     import asyncio
 
     try:
+        loop = asyncio.get_event_loop()
+        if loop.is_running():
+            loop.stop()
+            loop.close()
         asyncio.run(main())
     except RuntimeError as e:
         if "This event loop is already running" in str(e):
