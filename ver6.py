@@ -206,4 +206,6 @@ if __name__ == "__main__":
 
     nest_asyncio.apply()
     try:
-        asyncio
+        asyncio.get_event_loop().run_until_complete(main())  # Запуск основного асинхронного процесса
+    except RuntimeError as e:
+        logger.error(f"Ошибка запуска: {e}")
