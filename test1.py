@@ -187,7 +187,7 @@ async def main():
 
     application.add_handler(CommandHandler("start", start))
     application.add_handler(CallbackQueryHandler(menu_handler))
-    application.add_handler(MessageHandler(filters.StatusUpdate.SUCCESSFUL_PAYMENT, successful_payment_handler))
+    application.add_handler(MessageHandler(filters.SUCCESSFUL_PAYMENT, successful_payment_handler))
 
     logger.info("Бот запущен и готов к работе.")
     await application.run_polling()
@@ -200,4 +200,8 @@ if __name__ == "__main__":
     try:
         asyncio.get_event_loop().run_until_complete(main())
     except RuntimeError as e:
-        logger.error(f"Ошибка запуска: {e}")
+        if "This event loop is already running" in str(e):
+            logger.warning("Цикл событий уже работает. Используется альтернативный запуск.")
+            asyncio.run(main())
+        else:
+            logger.error(f"Ошибка запуска: {e}")
