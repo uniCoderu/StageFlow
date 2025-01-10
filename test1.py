@@ -199,15 +199,13 @@ if __name__ == "__main__":
     nest_asyncio.apply()
 
     try:
-        # Проверяем, активен ли цикл событий
         loop = asyncio.get_event_loop()
-        if loop.is_running():
-            logger.warning("Цикл событий уже запущен. Используется run_forever().")
-            loop.create_task(main())
-            loop.run_forever()
-        else:
-            logger.info("Цикл событий запускается с run_until_complete().")
+        if not loop.is_running():
+            logger.info("Запуск с run_until_complete().")
             loop.run_until_complete(main())
+        else:
+            logger.warning("Цикл событий уже запущен. Используется create_task().")
+            loop.create_task(main())
     except KeyboardInterrupt:
         logger.info("Остановка бота вручную...")
     except Exception as e:
