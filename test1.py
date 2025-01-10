@@ -200,13 +200,11 @@ if __name__ == "__main__":
 
     try:
         loop = asyncio.get_event_loop()
-        if not loop.is_running():
-            logger.info("Запуск с run_until_complete().")
-            loop.run_until_complete(main())
-        else:
-            logger.warning("Цикл событий уже запущен. Используется create_task().")
-            loop.create_task(main())
+        logger.info("Цикл событий запускается...")
+        loop.create_task(main())  # Добавляем main как задачу
+        loop.run_forever()  # Оставляем цикл событий активным
     except KeyboardInterrupt:
         logger.info("Остановка бота вручную...")
     except Exception as e:
         logger.error(f"Ошибка запуска: {e}")
+
