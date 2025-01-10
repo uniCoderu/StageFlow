@@ -197,11 +197,18 @@ if __name__ == "__main__":
     import asyncio
 
     nest_asyncio.apply()
+
     try:
-        asyncio.get_event_loop().run_until_complete(main())
-    except RuntimeError as e:
-        if "This event loop is already running" in str(e):
-            logger.warning("Цикл событий уже работает. Используется альтернативный запуск.")
-            asyncio.run(main())
+        # Проверяем, активен ли цикл событий
+        loop = asyncio.get_event_loop()
+        if loop.is_running():
+            logger.warning("Цикл событий уже запущен. Используется run_forever().")
+            loop.create_task(main())
+            loop.run_forever()
         else:
-            logger.error(f"Ошибка запуска: {e}")
+            logger.info("Цикл событий запускается с run_until_complete().")
+            loop.run_until_complete(main())
+    except KeyboardInterrupt:
+        logger.info("Остановка бота вручную...")
+    except Exception as e:
+        logger.error(f"Ошибка запуска: {e}")
