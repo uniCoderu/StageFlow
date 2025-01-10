@@ -69,6 +69,38 @@ def save_ticket(ticket_id, name, price, file_id, file_binary):
         f.write(file_binary)
     return file_path
 
+# Функция для отправки инвойса
+async def send_invoice(update: Update, context: ContextTypes.DEFAULT_TYPE, ticket):
+    """
+    Отправляет инвойс пользователю для оплаты.
+    :param update: Объект Update от Telegram.
+    :param context: Контекст выполнения.
+    :param ticket: Словарь с информацией о билете (id, name, price).
+    """
+    prices = [LabeledPrice(label=ticket['name'], amount=ticket['price'] * 100)]  # цена в копейках
+    await context.bot.send_invoice(
+        chat_id=update.effective_chat.id,
+        title=ticket['name'],
+        description=f"Оплата за билет: {ticket['name']}",
+        payload=f"ticket_{ticket['id']}",
+        provider_token=PAYMENT_TOKEN,
+        currency="RUB",
+        prices=prices,
+        start_parameter="buy-ticket"
+    )
+
+# Обработчик успешной оплаты
+async def successful_payment_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """
+    Обрабатывает успешный платеж.
+    :param update: Объект Update от Telegram.
+    :param context: Контекст выполнения.
+    """
+    payment_info = update.message.successful_payment
+    await update.message.reply_text(
+        f"Спасибо за покупку! Ваш платеж на сумму {payment_info.total_amount / 100:.2f} {payment_info.currency} был успешно обработан."
+    )
+
 # Основная команда /start
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Обрабатывает команду /start и выводит приветственное сообщение."""
@@ -139,19 +171,7 @@ async def menu_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     elif query.data.startswith("buy_ticket_"):
         index = int(query.data.split("_")[2])
         ticket = marketplace_data[index]
-
-        # Создание инвойса для оплаты
-        prices = [LabeledPrice(label=ticket['name'], amount=ticket['price'] * 100)]  # цена в копейках
-        await context.bot.send_invoice(
-            chat_id=query.message.chat_id,
-            title=ticket['name'],
-            description=f"Оплата за билет: {ticket['name']}",
-            payload=f"ticket_{ticket['id']}",
-            provider_token=PAYMENT_TOKEN,
-            currency="RUB",
-            prices=prices,
-            start_parameter="buy-ticket"
-        )
+        await send_invoice(update, context, ticket)  # Отправляем инвойс
 
     elif query.data == "sell_ticket":
         await query.edit_message_text(
@@ -161,90 +181,13 @@ async def menu_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
         context.user_data["awaiting_ticket_name"] = True
 
-# Обработка пользовательского ввода для билета и реквизитов
-async def text_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Обрабатывает текстовые сообщения от пользователя."""
-    user_id = update.message.from_user.id
-
-    if context.user_data.get("awaiting_ticket_name"):
-        ticket_name = update.message.text
-        user_data.setdefault(user_id, {})["ticket_name"] = ticket_name
-        context.user_data["awaiting_ticket_name"] = False
-        context.user_data["awaiting_ticket_file"] = True
-        await update.message.reply_text("Пожалуйста, отправьте файл или фото билета:")
-
-    elif context.user_data.get("awaiting_ticket_file"):
-        try:
-            if update.message.document:
-                file = await update.message.document.get_file()
-                file_binary = await file.download_as_bytearray()
-                file_id = update.message.document.file_id
-            elif update.message.photo:
-                file = await update.message.photo[-1].get_file()
-                file_binary = await file.download_as_bytearray()
-                file_id = update.message.photo[-1].file_id
-            else:
-                await update.message.reply_text("Пожалуйста, отправьте файл или фото билета.")
-                return
-
-            user_data[user_id]["ticket_file"] = file_id
-            user_data[user_id]["ticket_file_binary"] = file_binary
-            context.user_data["awaiting_ticket_file"] = False
-            context.user_data["awaiting_ticket_price"] = True
-            await update.message.reply_text("Введите цену билета в рублях:")
-        except Exception as e:
-            logger.error(f"Ошибка при обработке файла: {e}")
-            await update.message.reply_text("Произошла ошибка при загрузке файла. Пожалуйста, попробуйте снова.")
-
-    elif context.user_data.get("awaiting_ticket_price"):
-        try:
-            ticket_price = int(update.message.text)
-            ticket_id = generate_ticket_id()
-            ticket_name = user_data[user_id]["ticket_name"]
-            file_id = user_data[user_id]["ticket_file"]
-            file_binary = user_data[user_id]["ticket_file_binary"]
-
-            ticket_file_path = save_ticket(ticket_id, ticket_name, ticket_price, file_id, file_binary)
-
-            user_ticket = {
-                "id": ticket_id,
-                "name": ticket_name,
-                "price": ticket_price,
-                "file_id": file_id,
-                "file_path": ticket_file_path
-            }
-            marketplace_data.append(user_ticket)
-
-            await update.message.reply_text(
-                f"Ваш билет \"{ticket_name}\" успешно выставлен на торговую площадку по цене {ticket_price} руб.!"
-            )
-            context.user_data["awaiting_ticket_price"] = False
-            await start(update, context)
-        except ValueError:
-            await update.message.reply_text("Пожалуйста, введите корректное число для цены билета.")
-
-    elif context.user_data.get("awaiting_payment_details"):
-        payment_details = update.message.text
-        user_data.setdefault(user_id, {})["payment_details"] = payment_details
-        await update.message.reply_text("Ваши реквизиты сохранены! Возвращаю вас в меню настроек.")
-        context.user_data["awaiting_payment_details"] = False
-        await start(update, context)
-
-    elif context.user_data.get("awaiting_city"):
-        city = update.message.text
-        user_data.setdefault(user_id, {})["city"] = city
-        await update.message.reply_text(f"Ваш город ({city}) сохранен! Возвращаю вас в меню настроек.")
-        context.user_data["awaiting_city"] = False
-        await start(update, context)
-
 # Запуск бота
 async def main():
     application = ApplicationBuilder().token(API_KEY).build()
 
     application.add_handler(CommandHandler("start", start))
     application.add_handler(CallbackQueryHandler(menu_handler))
-    application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, text_handler))
-    application.add_handler(MessageHandler(filters.Document.ALL | filters.PHOTO, text_handler))
+    application.add_handler(MessageHandler(filters.StatusUpdate.SUCCESSFUL_PAYMENT, successful_payment_handler))
 
     logger.info("Бот запущен и готов к работе.")
     await application.run_polling()
