@@ -1,6 +1,6 @@
 import logging
 import sys
-import o
+import os
 
 try:
     from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, LabeledPrice
