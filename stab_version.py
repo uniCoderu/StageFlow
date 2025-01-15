@@ -107,9 +107,10 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 # Обработчик кнопок меню
 async def menu_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Обрабатывает нажатия на кнопки меню."""
     query = update.callback_query
     await query.answer()
+
+    if query.data == "marketplace":
 
 # Обработчик кнопки "Купить"
 elif query.data.startswith("buy_ticket_"):
