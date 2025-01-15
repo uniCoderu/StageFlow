@@ -57,15 +57,35 @@ def save_ticket(ticket_id, name, price, file_id, file_binary):
     # Сохраняем информацию о билете
     info_path = os.path.join(ticket_folder, "info.txt")
     with open(info_path, "w") as f:
-        f.write(f"Название: {name}\n")
-        f.write(f"Цена: {price}\n")
-        f.write(f"ID файла: {file_id}\n")
+        f.write(f"Название: {name}\\n")
+        f.write(f"Цена: {price}\\n")
+        f.write(f"ID файла: {file_id}\\n")
 
     # Сохраняем файл билета
     file_path = os.path.join(ticket_folder, "ticket_file")
     with open(file_path, "wb") as f:
         f.write(file_binary)
     return file_path
+
+# Добавьте функцию send_invoice сюда
+async def send_invoice(update: Update, context: ContextTypes.DEFAULT_TYPE, ticket):
+    """
+    Отправляет инвойс пользователю для оплаты.
+    :param update: Объект Update от Telegram.
+    :param context: Контекст выполнения.
+    :param ticket: Словарь с информацией о билете (id, name, price).
+    """
+    prices = [LabeledPrice(label=ticket['name'], amount=ticket['price'] * 100)]  # цена в копейках
+    await context.bot.send_invoice(
+        chat_id=update.effective_chat.id,
+        title=ticket['name'],
+        description=f"Оплата за билет: {ticket['name']}",
+        payload=f"ticket_{ticket['id']}",
+        provider_token="1744374395:TEST:236438f0df3db3a23dd9",
+        currency="RUB",
+        prices=prices,
+        start_parameter="buy-ticket"
+    )
 
 # Основная команда /start
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -90,6 +110,13 @@ async def menu_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Обрабатывает нажатия на кнопки меню."""
     query = update.callback_query
     await query.answer()
+
+# Обработчик кнопки "Купить"
+elif query.data.startswith("buy_ticket_"):
+    index = int(query.data.split("_")[2])  # Получаем индекс билета
+    ticket = marketplace_data[index]  # Достаем информацию о билете
+    await send_invoice(update, context, ticket)  # Отправляем инвойс
+
 
     if query.data == "settings":
         keyboard = [
@@ -168,6 +195,16 @@ async def text_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         context.user_data["awaiting_ticket_file"] = True
         await update.message.reply_text("Пожалуйста, отправьте файл или фото билета:")
 
+    # Добавьте successful_payment_handler сюда
+async def successful_payment_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """
+    Обрабатывает успешный платеж.
+    """
+    payment_info = update.message.successful_payment
+    await update.message.reply_text(
+        f"Спасибо за покупку! Ваш платеж на сумму {payment_info.total_amount / 100:.2f} {payment_info.currency} был успешно обработан."
+    )
+
     elif context.user_data.get("awaiting_ticket_file"):
         try:
             if update.message.document:
@@ -239,7 +276,7 @@ async def main():
     application.add_handler(CommandHandler("start", start))
     application.add_handler(CallbackQueryHandler(menu_handler))
     application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, text_handler))
-    application.add_handler(MessageHandler(filters.Document.ALL | filters.PHOTO, text_handler))
+    application.add_handler(MessageHandler(filters.SUCCESSFUL_PAYMENT, successful_payment_handler))  # Обработчик оплаты
 
     logger.info("Бот запущен и готов к работе.")
     await application.run_polling()
