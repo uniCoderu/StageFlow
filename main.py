@@ -1,5 +1,4 @@
 import logging
-import asyncio
 from telegram import Update
 from telegram.ext import Application, CommandHandler
 from handlers import start, marketplace_handler, buy_ticket_handler, my_tickets_handler, settings_handler
@@ -24,13 +23,9 @@ async def main() -> None:
     application.add_handler(CommandHandler("settings", settings_handler))
 
     # Запуск бота
-    await application.initialize()  # Убедимся, что инициализация прошла
-    await application.run_polling()  # Запуск бота на опрос сообщений
+    await application.run_polling()
 
-    # После завершения работы бота
-    await application.shutdown()
-
-# Запуск асинхронной функции с использованием стандартного цикла событий
+# Запуск асинхронной функции без явного создания цикла событий
 if __name__ == '__main__':
-    loop = asyncio.get_event_loop()  # Получаем текущий цикл событий
-    loop.run_until_complete(main())  # Запускаем основную асинхронную функцию
+    import asyncio
+    asyncio.run(main())  # Бот теперь будет запускаться через asyncio.run
