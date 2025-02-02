@@ -1,4 +1,5 @@
 import logging
+import asyncio
 from telegram import Update
 from telegram.ext import Application, CommandHandler
 from handlers import start, marketplace_handler, buy_ticket_handler, my_tickets_handler, settings_handler
@@ -25,15 +26,13 @@ async def main() -> None:
     # Запуск бота
     await application.run_polling()
 
-# Запуск асинхронной функции с использованием asyncio.run() или в уже существующем цикле событий
+# Запуск асинхронной функции с использованием стандартного цикла событий
 if __name__ == '__main__':
-    import asyncio
-
-    # Если цикл событий уже работает, используем его
     try:
-        asyncio.run(main())  # Для обычных приложений
+        loop = asyncio.get_event_loop()  # Получаем текущий цикл событий
+        loop.run_until_complete(main())  # Запускаем основную асинхронную функцию
     except RuntimeError as e:
         if str(e) == 'This event loop is already running':
             loop = asyncio.get_event_loop()
             loop.create_task(main())  # Для среды с уже работающим циклом событий
-            loop.run_until_complete(main())  # Прямо ждем завершения задачи
+            loop.run_forever()  # Переходим к бесконечному ожиданию задач
