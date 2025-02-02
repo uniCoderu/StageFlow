@@ -1,44 +1,30 @@
+# utils.py
+import json
 import os
 
-TICKETS_DIR = "tickets"
-if not os.path.exists(TICKETS_DIR):
-    os.makedirs(TICKETS_DIR)
+# Функция для сохранения данных о билете
+def save_ticket(ticket_data):
+    with open("tickets.json", "a") as file:
+        json.dump(ticket_data, file)
+        file.write("\n")  # Для разделения записей
 
-# Генерация ID билета
+# Функция для генерации ID билета
 def generate_ticket_id():
-    return f"ticket_{len(os.listdir(TICKETS_DIR)) + 1}"
+    return str(os.urandom(8).hex())
 
-# Сохранение информации о билете и файла
-def save_ticket(ticket_id, name, price, file_id, file_binary):
-    ticket_folder = os.path.join(TICKETS_DIR, ticket_id)
-    if not os.path.exists(ticket_folder):
-        os.makedirs(ticket_folder)
+# Функция для отправки счета пользователю
+import httpx
 
-    # Сохраняем информацию о билете
-    info_path = os.path.join(ticket_folder, "info.txt")
-    with open(info_path, "w") as f:
-        f.write(f"Название: {name}\n")
-        f.write(f"Цена: {price}\n")
-        f.write(f"ID файла: {file_id}\n")
-
-    # Сохраняем файл билета
-    file_path = os.path.join(ticket_folder, "ticket_file")
-    with open(file_path, "wb") as f:
-        f.write(file_binary)
-    return file_path
-
-# Отправка инвойса пользователю
-async def send_invoice(update, context, ticket):
-    from telegram import LabeledPrice
-    
-    prices = [LabeledPrice(label=ticket['name'], amount=ticket['price'] * 100)]  # цена в копейках
-    await context.bot.send_invoice(
-        chat_id=update.effective_chat.id,
-        title=ticket['name'],
-        description=f"Оплата за билет: {ticket['name']}",
-        payload=f"ticket_{ticket['id']}",
-        provider_token="1744374395:TEST:236438f0df3db3a23dd9",  # тестовый токен
-        currency="RUB",
-        prices=prices,
-        start_parameter="buy-ticket"
-    )
+async def send_invoice(chat_id, ticket_data):
+    async with httpx.AsyncClient() as client:
+        url = f"https://api.telegram.org/bot{API_KEY}/sendInvoice"
+        payload = {
+            "chat_id": chat_id,
+            "title": "Билет на мероприятие",
+            "description": "Описание мероприятия",
+            "payload": ticket_data["ticket_id"],
+            "provider_token": "YOUR_PROVIDER_TOKEN",  # Подставьте свой токен
+            "currency": "RUB",
+            "prices": [{"label": "Билет", "amount": ticket_data["price"]}],
+        }
+        await client.post(url, json=payload)
