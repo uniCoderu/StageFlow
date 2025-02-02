@@ -1,27 +1,30 @@
+# main.py
 import logging
 import asyncio
-import nest_asyncio
-from telegram.ext import ApplicationBuilder, CommandHandler, CallbackQueryHandler
-from handlers import start, menu_handler  # Импортируем функции-обработчики
+from telegram import Update
+from telegram.ext import Application, CommandHandler, CallbackQueryHandler
+from handlers import start, marketplace, buy_ticket, my_tickets
+from config import API_KEY
 
-# Устанавливаем логирование
-logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-                    level=logging.INFO)
+# Настроим логирование
+logging.basicConfig(format="%(asctime)s - %(name)s - %(levelname)s - %(message)s", level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-API_KEY = '8018543300:AAFgcrM7-n7d1kkiO35M96PHp-UCHtVagrU'  # Ваш API ключ
-
-# Главная асинхронная функция для запуска бота
+# Основная функция для запуска бота
 async def main():
-    application = ApplicationBuilder().token(API_KEY).build()
+    # Создание экземпляра приложения
+    application = Application.builder().token(API_KEY).build()
 
-    application.add_handler(CommandHandler("start", start))  # Обработчик команды /start
-    application.add_handler(CallbackQueryHandler(menu_handler))  # Обработчик callback'ов
+    # Добавление обработчиков команд
+    application.add_handler(CommandHandler("start", start))
+    application.add_handler(CommandHandler("marketplace", marketplace))
+    application.add_handler(CommandHandler("buy_ticket", buy_ticket))
+    application.add_handler(CommandHandler("my_tickets", my_tickets))
 
+    # Запуск бота
     logger.info("Бот запущен и готов к работе.")
     await application.run_polling()
 
-# Важно для запуска бота в Google Colab
+# Запуск основного цикла
 if __name__ == "__main__":
-    nest_asyncio.apply()  # Разрешаем asyncio работать в Google Colab
-    asyncio.get_event_loop().run_until_complete(main())  # Запускаем основную функцию
+    asyncio.run(main())
