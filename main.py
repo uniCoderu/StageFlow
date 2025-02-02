@@ -11,7 +11,7 @@ from telegram.ext import ApplicationBuilder, CommandHandler, CallbackQueryHandle
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-API_KEY = "YOUR_TELEGRAM_BOT_API_KEY"
+API_KEY = "8018543300:AAFgcrM7-n7d1kkiO35M96PHp-UCHtVagrU"
 
 # Запуск бота
 async def main():
