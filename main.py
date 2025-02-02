@@ -25,11 +25,15 @@ async def main() -> None:
     # Запуск бота
     await application.run_polling()
 
-# Запуск асинхронной функции через asyncio.run()
+# Запуск асинхронной функции с использованием asyncio.run() или в уже существующем цикле событий
 if __name__ == '__main__':
     import asyncio
+
+    # Если цикл событий уже работает, используем его
     try:
         asyncio.run(main())  # Для обычных приложений
     except RuntimeError as e:
         if str(e) == 'This event loop is already running':
-            asyncio.get_event_loop().create_task(main())  # Для среды с уже работающим циклом событий
+            loop = asyncio.get_event_loop()
+            loop.create_task(main())  # Для среды с уже работающим циклом событий
+            loop.run_forever()  # Прямо запускаем цикл событий вручную
