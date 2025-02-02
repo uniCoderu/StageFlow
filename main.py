@@ -28,4 +28,5 @@ async def main() -> None:
 # Запуск бота
 if __name__ == '__main__':
     import asyncio
-    asyncio.run(main())  # Используем asyncio.run для запуска основного метода
+    # Убираем asyncio.run() и сразу запускаем функцию main()
+    asyncio.get_event_loop().run_until_complete(main())
