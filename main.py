@@ -1,10 +1,11 @@
 import logging
 import sys
 import os
-import nest_asyncio
 import asyncio
-from telegram.ext import ApplicationBuilder
-from handlers import start, menu_handler, text_handler
+import nest_asyncio
+
+from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
+from telegram.ext import ApplicationBuilder, CommandHandler, CallbackQueryHandler, ContextTypes, MessageHandler, filters
 
 # Настройка логирования
 logging.basicConfig(level=logging.INFO)
