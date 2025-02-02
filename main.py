@@ -24,15 +24,13 @@ async def main() -> None:
     application.add_handler(CommandHandler("settings", settings_handler))
 
     # Запуск бота
-    await application.run_polling()
+    await application.initialize()  # Убедимся, что инициализация прошла
+    await application.run_polling()  # Запуск бота на опрос сообщений
+
+    # После завершения работы бота
+    await application.shutdown()
 
 # Запуск асинхронной функции с использованием стандартного цикла событий
 if __name__ == '__main__':
-    try:
-        loop = asyncio.get_event_loop()  # Получаем текущий цикл событий
-        loop.run_until_complete(main())  # Запускаем основную асинхронную функцию
-    except RuntimeError as e:
-        if str(e) == 'This event loop is already running':
-            loop = asyncio.get_event_loop()
-            loop.create_task(main())  # Для среды с уже работающим циклом событий
-            loop.run_forever()  # Переходим к бесконечному ожиданию задач
+    loop = asyncio.get_event_loop()  # Получаем текущий цикл событий
+    loop.run_until_complete(main())  # Запускаем основную асинхронную функцию
