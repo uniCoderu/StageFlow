@@ -9,7 +9,7 @@ logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s
                     level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-API_KEY = 'YOUR_API_KEY'  # Замените на ваш токен
+API_KEY = '8018543300:AAFgcrM7-n7d1kkiO35M96PHp-UCHtVagrU'  # Ваш API ключ
 
 # Главная асинхронная функция для запуска бота
 async def main():
@@ -24,7 +24,4 @@ async def main():
 # Важно для запуска бота в Google Colab
 if __name__ == "__main__":
     nest_asyncio.apply()  # Разрешаем asyncio работать в Google Colab
-    try:
-        asyncio.get_event_loop().run_until_complete(main())  # Запускаем основную функцию
-    except RuntimeError as e:
-        logger.error(f"Ошибка запуска: {e}")
+    asyncio.get_event_loop().run_until_complete(main())  # Запускаем основную функцию
