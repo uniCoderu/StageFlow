@@ -36,4 +36,4 @@ if __name__ == '__main__':
         if str(e) == 'This event loop is already running':
             loop = asyncio.get_event_loop()
             loop.create_task(main())  # Для среды с уже работающим циклом событий
-            loop.run_forever()  # Прямо запускаем цикл событий вручную
+            loop.run_until_complete(main())  # Прямо ждем завершения задачи
