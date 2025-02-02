@@ -25,6 +25,7 @@ async def main() -> None:
     # Запуск бота
     await application.run_polling()
 
+# Запуск асинхронной функции напрямую (не через asyncio.run)
 if __name__ == '__main__':
     import asyncio
-    asyncio.run(main())
+    asyncio.create_task(main())
