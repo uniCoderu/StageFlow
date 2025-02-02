@@ -25,7 +25,12 @@ async def main() -> None:
     # Запуск бота
     await application.run_polling()
 
-# Запуск асинхронной функции без явного создания цикла событий
+# Запуск бота без явного создания нового цикла событий
 if __name__ == '__main__':
     import asyncio
-    asyncio.run(main())  # Бот теперь будет запускаться через asyncio.run
+    # Проверка, если цикл событий уже работает
+    try:
+        asyncio.get_event_loop().run_until_complete(main())
+    except RuntimeError:
+        # Если цикл событий уже запущен, используем run_polling
+        asyncio.create_task(main())
