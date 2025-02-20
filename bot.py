@@ -1,3 +1,4 @@
+# bot.py
 import sys
 sys.path.insert(0, '/content/drive/My Drive/StageFlow')
 
@@ -8,11 +9,9 @@ from handlers.text_handler import text_handler
 from handlers.payment_handler import successful_payment_handler
 from config import API_KEY, logger
 
-# Запуск бота
 async def main():
     application = ApplicationBuilder().token(API_KEY).build()
 
-    # Добавляем обработчики
     application.add_handler(CommandHandler("start", start))
     application.add_handler(CallbackQueryHandler(menu_handler))
     application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, text_handler))
