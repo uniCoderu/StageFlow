@@ -1,73 +1,74 @@
+# handlers/menu_handler.py
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import ContextTypes
-from storage.ticket_storage import marketplace_data
-from handlers.start_handler import start
+from storage.user_data import user_data
 
-async def menu_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
+async def menu_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     query = update.callback_query
-    await query.answer()
+    await query.answer()  # Подтверждаем получение callback
 
-    if query.data == "settings":
+    user_id = query.from_user.id
+    data = query.data
+
+    if data == "settings":
         keyboard = [
             [InlineKeyboardButton("💰 Реквизиты", callback_data="payment_details")],
-            [InlineKeyboardButton("🌍 Выбор города", callback_data="select_city")],
+            [InlineKeyboardButton("🌐 Выбор города", callback_data="select_city")],
             [InlineKeyboardButton("📞 Техническая поддержка", url="https://t.me/monekeny")],
-            [InlineKeyboardButton("🔙 Назад", callback_data="main_menu")]
+            [InlineKeyboardButton("⬅️ Назад", callback_data="main_menu")]
         ]
         reply_markup = InlineKeyboardMarkup(keyboard)
         await query.edit_message_text("Пожалуйста, выберите одну из настроек:", reply_markup=reply_markup)
 
-    elif query.data == "main_menu":
-        await start(update, context)
-
-    elif query.data == "marketplace":
-        if marketplace_data:
-            ticket_buttons = [
-                [InlineKeyboardButton(f"{ticket['name']} - {ticket['price']} руб.", callback_data=f"market_details_{i}")]
-                for i, ticket in enumerate(marketplace_data)
+    elif data == "payment_details":
+        user_payment_data = user_data.get(user_id, {}).get("payment_details")
+        if user_payment_data:
+            keyboard = [
+                [InlineKeyboardButton("Да", callback_data="edit_payment_details")],
+                [InlineKeyboardButton("Нет", callback_data="settings")]
             ]
-            ticket_buttons.append([InlineKeyboardButton("Назад", callback_data="main_menu")])
-
-            reply_markup = InlineKeyboardMarkup(ticket_buttons)
-            await query.edit_message_text("Список доступных билетов:", reply_markup=reply_markup)
+            reply_markup = InlineKeyboardMarkup(keyboard)
+            await query.edit_message_text(
+                "Ваши реквизиты уже сохранены. Хотите изменить их?", reply_markup=reply_markup
+            )
         else:
-            await query.edit_message_text("На торговой площадке пока нет билетов.", reply_markup=InlineKeyboardMarkup([
-                [InlineKeyboardButton("Назад", callback_data="main_menu")]
-            ]))
+            keyboard = [
+                [InlineKeyboardButton("СБП", callback_data="sbp")],
+                [InlineKeyboardButton("Номер карты", callback_data="card")]
+            ]
+            reply_markup = InlineKeyboardMarkup(keyboard)
+            await query.edit_message_text("Выберите способ получения оплаты:", reply_markup=reply_markup)
 
-    elif query.data.startswith("market_details_"):
-        index = int(query.data.split("_")[2])
-        ticket = marketplace_data[index]
-        event_details = (
-            f"Информация о билете:\nМероприятие: {ticket['name']}\n"
-            f"Цена: {ticket['price']} руб.\n"
-            "Вы хотите купить этот билет?"
-        )
+    elif data == "sbp":
+        await query.edit_message_text("Введите номер телефона, привязанный к банку:")
+        context.user_data["awaiting_sbp_phone"] = True
+
+    elif data == "card":
+        await query.edit_message_text("Введите номер вашей карты:")
+        context.user_data["awaiting_card_number"] = True
+
+    elif data == "edit_payment_details":
         keyboard = [
-            [InlineKeyboardButton("Купить", callback_data=f"buy_ticket_{index}")],
-            [InlineKeyboardButton("Назад", callback_data="marketplace")]
+            [InlineKeyboardButton("СБП", callback_data="sbp")],
+            [InlineKeyboardButton("Номер карты", callback_data="card")]
         ]
         reply_markup = InlineKeyboardMarkup(keyboard)
-        await query.edit_message_text(event_details, reply_markup=reply_markup)
+        await query.edit_message_text("Выберите способ получения оплаты:", reply_markup=reply_markup)
 
-    elif query.data.startswith("buy_ticket_"):
-        index = int(query.data.split("_")[2])
-        ticket = marketplace_data.pop(index)
-        ticket_folder = os.path.join(TICKETS_DIR, ticket["id"])
-        ticket_file_path = os.path.join(ticket_folder, "ticket_file")
+    elif data.startswith("bank_"):
+        bank_name = data.split("_")[1]
+        user_data[user_id]["payment_details"]["bank"] = bank_name
+        await query.edit_message_text(f"Ваш выбор ({bank_name}) сохранен! Возвращаю вас в меню настроек.")
 
-        await query.edit_message_text(
-            f"Вы успешно купили билет \"{ticket['name']}\" за {ticket['price']} руб."
-        )
-        if os.path.exists(ticket_file_path):
-            with open(ticket_file_path, "rb") as f:
-                await query.message.reply_document(document=f, caption=f"Ваш билет: {ticket['name']}")
+        keyboard = [
+            [InlineKeyboardButton("💰 Реквизиты", callback_data="payment_details")],
+            [InlineKeyboardButton("🌐 Выбор города", callback_data="select_city")],
+            [InlineKeyboardButton("📞 Техническая поддержка", url="https://t.me/monekeny")],
+            [InlineKeyboardButton("⬅️ Назад", callback_data="main_menu")]
+        ]
+        reply_markup = InlineKeyboardMarkup(keyboard)
+        await query.message.reply_text("Выберите настройку:", reply_markup=reply_markup)
+
+    elif data == "main_menu":
+        from handlers.start_handler import start
         await start(update, context)
-
-    elif query.data == "sell_ticket":
-        await query.edit_message_text(
-            "Продажа билета:\n"
-            "1️⃣ Укажите название вашего билета (например, \"Концерт XYZ\").\n"
-            "Пожалуйста, введите название билета:"
-        )
-        context.user_data["awaiting_ticket_name"] = True
