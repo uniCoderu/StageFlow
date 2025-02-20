@@ -34,5 +34,20 @@ async def text_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
         reply_markup = InlineKeyboardMarkup(keyboard)
         await update.message.reply_text("Выберите настройку:", reply_markup=reply_markup)
 
+    elif context.user_data.get("awaiting_city"):
+        city = update.message.text
+        user_data.setdefault(user_id, {})["city"] = city
+        context.user_data["awaiting_city"] = False
+
+        await update.message.reply_text(f"Ваш город ({city}) сохранен! Возвращаю вас в меню настроек.")
+        keyboard = [
+            [InlineKeyboardButton("💰 Реквизиты", callback_data="payment_details")],
+            [InlineKeyboardButton("🌐 Выбор города", callback_data="select_city")],
+            [InlineKeyboardButton("📞 Техническая поддержка", url="https://t.me/monekeny")],
+            [InlineKeyboardButton("⬅️ Назад", callback_data="main_menu")]
+        ]
+        reply_markup = InlineKeyboardMarkup(keyboard)
+        await update.message.reply_text("Выберите настройку:", reply_markup=reply_markup)
+
     else:
         await update.message.reply_text("Пожалуйста, выберите действие из меню.")
