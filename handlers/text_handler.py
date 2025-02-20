@@ -2,10 +2,11 @@
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import ContextTypes
 from storage.user_data import user_data
-from config import logger  # Добавляем logger для отладки
+from config import logger
 
 async def text_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     user_id = update.message.from_user.id
+    logger.info(f"Получен текст от пользователя {user_id}: {update.message.text}")
 
     if context.user_data.get("awaiting_sbp_phone"):
         phone = update.message.text
