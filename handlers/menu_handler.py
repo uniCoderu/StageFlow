@@ -2,6 +2,7 @@
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import ContextTypes
 from storage.user_data import user_data
+from config import logger  # Импортируем logger из config
 
 async def menu_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     query = update.callback_query
@@ -9,6 +10,7 @@ async def menu_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
 
     user_id = query.from_user.id
     data = query.data
+    logger.info(f"Получен callback: {data} от пользователя {user_id}")  # Отладочный вывод
 
     if data == "settings":
         keyboard = [
@@ -72,7 +74,11 @@ async def menu_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
     elif data == "select_city":
         await query.edit_message_text("Введите название вашего города:")
         context.user_data["awaiting_city"] = True
+        logger.info(f"Ожидаем ввод города для пользователя {user_id}")
 
     elif data == "main_menu":
         from handlers.start_handler import start
+        # Исправляем вызов start, чтобы он работал с callback-запросом
+        await query.edit_message_text("Возвращаюсь в главное меню...")
         await start(update, context)
+        logger.info(f"Возврат в главное меню для пользователя {user_id}")
