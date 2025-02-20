@@ -2,6 +2,7 @@
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import ContextTypes
 from storage.user_data import user_data
+from config import logger  # Добавляем logger для отладки
 
 async def text_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     user_id = update.message.from_user.id
@@ -48,6 +49,7 @@ async def text_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
         ]
         reply_markup = InlineKeyboardMarkup(keyboard)
         await update.message.reply_text("Выберите настройку:", reply_markup=reply_markup)
+        logger.info(f"Город {city} сохранен для пользователя {user_id}")
 
     else:
         await update.message.reply_text("Пожалуйста, выберите действие из меню.")
