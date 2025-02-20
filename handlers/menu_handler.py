@@ -69,6 +69,10 @@ async def menu_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
         reply_markup = InlineKeyboardMarkup(keyboard)
         await query.message.reply_text("Выберите настройку:", reply_markup=reply_markup)
 
+    elif data == "select_city":
+        await query.edit_message_text("Введите название вашего города:")
+        context.user_data["awaiting_city"] = True
+
     elif data == "main_menu":
         from handlers.start_handler import start
         await start(update, context)
