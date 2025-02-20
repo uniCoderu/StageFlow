@@ -1,6 +1,7 @@
 # handlers/start_handler.py
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import ContextTypes
+from config import logger
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     keyboard = [
@@ -10,16 +11,12 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     ]
     reply_markup = InlineKeyboardMarkup(keyboard)
 
-    # Проверяем, откуда пришел запрос (сообщение или callback)
     if update.message:
         await update.message.reply_text(
             "Добро пожаловать! Я бот для безопасной перепродажи билетов на мероприятия.\n"
             "Используйте меню ниже для выбора нужного действия.",
             reply_markup=reply_markup
         )
-    elif update.callback_query:
-        await update.callback_query.edit_message_text(
-            "Добро пожаловать! Я бот для безопасной перепродажи билетов на мероприятия.\n"
-            "Используйте меню ниже для выбора нужного действия.",
-            reply_markup=reply_markup
-        )
+        logger.info(f"Команда /start выполнена для пользователя {update.message.from_user.id}")
+    else:
+        logger.warning("start вызван без сообщения")
