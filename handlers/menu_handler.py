@@ -3,6 +3,7 @@ from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import ContextTypes
 from storage.user_data import user_data
 from config import logger
+from handlers.start_handler import start  # Импортируем start напрямую
 
 async def menu_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     query = update.callback_query
@@ -79,16 +80,5 @@ async def menu_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
         logger.info(f"Ожидаем ввод города для пользователя {user_id}")
 
     elif data == "main_menu":
-        # Упрощаем возврат в главное меню
-        keyboard = [
-            [InlineKeyboardButton("🏧 Торговая площадка", callback_data="marketplace_menu")],
-            [InlineKeyboardButton("📜 Полит. соглашение", callback_data="policy")],
-            [InlineKeyboardButton("⚙️ Настройки", callback_data="settings")]
-        ]
-        reply_markup = InlineKeyboardMarkup(keyboard)
-        await query.edit_message_text(
-            "Добро пожаловать! Я бот для безопасной перепродажи билетов на мероприятия.\n"
-            "Используйте меню ниже для выбора нужного действия.",
-            reply_markup=reply_markup
-        )
+        await start(update, context)  # Прямой вызов start, как в старом коде
         logger.info(f"Возврат в главное меню для пользователя {user_id}")
