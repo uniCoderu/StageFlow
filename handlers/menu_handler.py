@@ -59,4 +59,21 @@ async def menu_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
         await query.edit_message_text("Введите номер вашей карты:")
         context.user_data["awaiting_card_number"] = True
 
-    elif data == "edit_payment_details
+    elif data == "edit_payment_details":  # Исправленная строка
+        keyboard = [
+            [InlineKeyboardButton("СБП", callback_data="sbp")],
+            [InlineKeyboardButton("Номер карты", callback_data="card")]
+        ]
+        reply_markup = InlineKeyboardMarkup(keyboard)
+        await query.edit_message_text("Выберите способ получения оплаты:", reply_markup=reply_markup)
+
+    elif data.startswith("bank_"):
+        bank_name = data.split("_")[1]
+        user_data[user_id]["payment_details"]["bank"] = bank_name
+        await query.edit_message_text(f"Ваш выбор ({bank_name}) сохранен! Возвращаю вас в меню настроек.")
+        await show_settings_menu(update, context)
+
+    elif data == "select_city":
+        await query.edit_message_text("Введите название вашего города:")
+        context.user_data["awaiting_city"] = True
+        logger.info(f"Ожидаем ввод города для пользователя {user_id}")
