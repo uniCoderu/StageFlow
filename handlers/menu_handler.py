@@ -9,7 +9,7 @@ async def show_settings_menu(update: Update, context: ContextTypes.DEFAULT_TYPE,
         [InlineKeyboardButton("💰 Реквизиты", callback_data="payment_details")],
         [InlineKeyboardButton("🌐 Выбор города", callback_data="select_city")],
         [InlineKeyboardButton("📞 Техническая поддержка", url="https://t.me/monekeny")],
-        [InlineKeyboardButton("⬅️ Назад", callback_data="main_menu")]  # Возвращаем callback
+        [InlineKeyboardButton("⬅️ Назад", callback_data="main_menu")]
     ]
     reply_markup = InlineKeyboardMarkup(keyboard)
 
@@ -79,9 +79,8 @@ async def menu_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
         logger.info(f"Ожидаем ввод города для пользователя {user_id}")
 
     elif data == "main_menu":
-        # Прямое отображение главного меню
         keyboard = [
-            [InlineKeyboardButton("🏧 Торговая площадка", callback_data="marketplace_menu")],
+            [InlineKeyboardButton("🏧 Торговая площадка", callback_data="marketplace")],
             [InlineKeyboardButton("📜 Полит. соглашение", callback_data="policy")],
             [InlineKeyboardButton("⚙️ Настройки", callback_data="settings")]
         ]
