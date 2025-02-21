@@ -3,7 +3,22 @@ from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import ContextTypes
 from storage.user_data import user_data
 from config import logger
-from handlers.start_handler import start  # Импортируем start напрямую
+from handlers.start_handler import start
+
+async def show_settings_menu(update: Update, context: ContextTypes.DEFAULT_TYPE, message_text: str = "Пожалуйста, выберите одну из настроек:") -> None:
+    """Вспомогательная функция для отображения меню настроек."""
+    keyboard = [
+        [InlineKeyboardButton("💰 Реквизиты", callback_data="payment_details")],
+        [InlineKeyboardButton("🌐 Выбор города", callback_data="select_city")],
+        [InlineKeyboardButton("📞 Техническая поддержка", url="https://t.me/monekeny")],
+        [InlineKeyboardButton("⬅️ Назад", callback_data="main_menu")]
+    ]
+    reply_markup = InlineKeyboardMarkup(keyboard)
+
+    if update.callback_query:
+        await update.callback_query.edit_message_text(message_text, reply_markup=reply_markup)
+    elif update.message:
+        await update.message.reply_text(message_text, reply_markup=reply_markup)
 
 async def menu_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     query = update.callback_query
@@ -17,14 +32,7 @@ async def menu_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
     logger.info(f"Получен callback: {data} от пользователя {user_id}")
 
     if data == "settings":
-        keyboard = [
-            [InlineKeyboardButton("💰 Реквизиты", callback_data="payment_details")],
-            [InlineKeyboardButton("🌐 Выбор города", callback_data="select_city")],
-            [InlineKeyboardButton("📞 Техническая поддержка", url="https://t.me/monekeny")],
-            [InlineKeyboardButton("⬅️ Назад", callback_data="main_menu")]
-        ]
-        reply_markup = InlineKeyboardMarkup(keyboard)
-        await query.edit_message_text("Пожалуйста, выберите одну из настроек:", reply_markup=reply_markup)
+        await show_settings_menu(update, context)
 
     elif data == "payment_details":
         user_payment_data = user_data.get(user_id, {}).get("payment_details")
@@ -65,14 +73,7 @@ async def menu_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
         bank_name = data.split("_")[1]
         user_data[user_id]["payment_details"]["bank"] = bank_name
         await query.edit_message_text(f"Ваш выбор ({bank_name}) сохранен! Возвращаю вас в меню настроек.")
-        keyboard = [
-            [InlineKeyboardButton("💰 Реквизиты", callback_data="payment_details")],
-            [InlineKeyboardButton("🌐 Выбор города", callback_data="select_city")],
-            [InlineKeyboardButton("📞 Техническая поддержка", url="https://t.me/monekeny")],
-            [InlineKeyboardButton("⬅️ Назад", callback_data="main_menu")]
-        ]
-        reply_markup = InlineKeyboardMarkup(keyboard)
-        await query.message.reply_text("Выберите настройку:", reply_markup=reply_markup)
+        await show_settings_menu(update, context)
 
     elif data == "select_city":
         await query.edit_message_text("Введите название вашего города:")
@@ -80,5 +81,5 @@ async def menu_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
         logger.info(f"Ожидаем ввод города для пользователя {user_id}")
 
     elif data == "main_menu":
-        await start(update, context)  # Прямой вызов start, как в старом коде
+        await start(update, context)
         logger.info(f"Возврат в главное меню для пользователя {user_id}")
