@@ -1,3 +1,4 @@
+# config.py
 import logging
 import os
 
@@ -26,6 +27,9 @@ logger.setLevel(logging.INFO)
 
 # Ваш Telegram API ключ
 API_KEY = "8018543300:AAFgcrM7-n7d1kkiO35M96PHp-UCHtVagrU"
+
+# Платежный ключ для PayMaster
+PAYMASTER_API_KEY = "1744374395:TEST:236438f0df3db3a23dd9"
 
 # Директория для хранения данных билетов
 TICKETS_DIR = "tickets"
