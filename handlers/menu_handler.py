@@ -9,7 +9,7 @@ async def show_settings_menu(update: Update, context: ContextTypes.DEFAULT_TYPE,
         [InlineKeyboardButton("💰 Реквизиты", callback_data="payment_details")],
         [InlineKeyboardButton("🌐 Выбор города", callback_data="select_city")],
         [InlineKeyboardButton("📞 Техническая поддержка", url="https://t.me/monekeny")],
-        [InlineKeyboardButton("⬅️ Назад", switch_inline_query_current_chat="/start")]  # Отправляем /start
+        [InlineKeyboardButton("⬅️ Назад", callback_data="main_menu")]  # Возвращаем callback
     ]
     reply_markup = InlineKeyboardMarkup(keyboard)
 
@@ -59,7 +59,7 @@ async def menu_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
         await query.edit_message_text("Введите номер вашей карты:")
         context.user_data["awaiting_card_number"] = True
 
-    elif data == "edit_payment_details":  # Исправленная строка
+    elif data == "edit_payment_details":
         keyboard = [
             [InlineKeyboardButton("СБП", callback_data="sbp")],
             [InlineKeyboardButton("Номер карты", callback_data="card")]
@@ -77,3 +77,15 @@ async def menu_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
         await query.edit_message_text("Введите название вашего города:")
         context.user_data["awaiting_city"] = True
         logger.info(f"Ожидаем ввод города для пользователя {user_id}")
+
+    elif data == "main_menu":
+        # Прямое отображение главного меню
+        keyboard = [
+            [InlineKeyboardButton("🏧 Торговая площадка", callback_data="marketplace_menu")],
+            [InlineKeyboardButton("📜 Полит. соглашение", callback_data="policy")],
+            [InlineKeyboardButton("⚙️ Настройки", callback_data="settings")]
+        ]
+        reply_markup = InlineKeyboardMarkup(keyboard)
+        text = "Добро пожаловать! Я бот для безопасной перепродажи билетов на мероприятия.\nИспользуйте меню ниже для выбора нужного действия."
+        await query.edit_message_text(text, reply_markup=reply_markup)
+        logger.info(f"Главное меню отображено для пользователя {user_id}")
