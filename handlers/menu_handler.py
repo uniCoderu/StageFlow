@@ -6,7 +6,6 @@ from config import logger
 from handlers.start_handler import start
 
 async def show_settings_menu(update: Update, context: ContextTypes.DEFAULT_TYPE, message_text: str = "Пожалуйста, выберите одну из настроек:") -> None:
-    """Вспомогательная функция для отображения меню настроек."""
     keyboard = [
         [InlineKeyboardButton("💰 Реквизиты", callback_data="payment_details")],
         [InlineKeyboardButton("🌐 Выбор города", callback_data="select_city")],
