@@ -17,18 +17,26 @@ async def marketplace_handler(update: Update, context: ContextTypes.DEFAULT_TYPE
     logger.info(f"Получен callback: {data} от пользователя {user_id}")
 
     if data == "marketplace":
+        keyboard = [
+            [InlineKeyboardButton("💳 Продать билет", callback_data="sell_ticket")]
+        ]
         if marketplace_data:
             ticket_buttons = [
                 [InlineKeyboardButton(f"{ticket['name']} - {ticket['price']} руб.", callback_data=f"market_details_{ticket['id']}")]
                 for ticket in marketplace_data
             ]
-            ticket_buttons.append([InlineKeyboardButton("Назад", callback_data="main_menu")])
-            reply_markup = InlineKeyboardMarkup(ticket_buttons)
-            await query.edit_message_text("Список доступных билетов:", reply_markup=reply_markup)
-        else:
-            await query.edit_message_text("На торговой площадке пока нет билетов.", reply_markup=InlineKeyboardMarkup([
-                [InlineKeyboardButton("Назад", callback_data="main_menu")]
-            ]))
+            keyboard.extend(ticket_buttons)
+        keyboard.append([InlineKeyboardButton("Назад", callback_data="main_menu")])
+        reply_markup = InlineKeyboardMarkup(keyboard)
+        await query.edit_message_text("Торговая площадка:", reply_markup=reply_markup)
+
+    elif data == "sell_ticket":
+        await query.edit_message_text(
+            "Продажа билета:\n"
+            "1️⃣ Укажите название вашего билета (например, \"Концерт XYZ\").\n"
+            "Пожалуйста, введите название билета:"
+        )
+        context.user_data["awaiting_ticket_name"] = True
 
     elif data.startswith("market_details_"):
         ticket_id = data.split("_")[2]
