@@ -15,7 +15,7 @@ StageFlow/
 │   ├── menu_handler.py
 │   ├── text_handler.py
 │   ├── payment_handler.py
-│   ├── marketplace_handler.py  # Новый файл
+│   ├── marketplace_handler.py
 └── storage/
     ├── __init__.py
     ├── user_data.py
