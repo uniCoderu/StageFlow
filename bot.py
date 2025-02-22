@@ -17,7 +17,7 @@ async def main():
     application.add_handler(CallbackQueryHandler(menu_handler, pattern="^(settings|payment_details|sbp|card|edit_payment_details|bank_|select_city|main_menu)$"))
     application.add_handler(CallbackQueryHandler(marketplace_handler, pattern="^(marketplace|market_details_|buy_ticket_|sell_ticket)$"))
     application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, text_handler))
-    application.add_handler(MessageHandler(filters.Document.ALL | filters.PHOTO, text_handler))  # Для файлов и фото
+    application.add_handler(MessageHandler(filters.Document.ALL | filters.PHOTO, text_handler))
     application.add_handler(PreCheckoutQueryHandler(pre_checkout_handler))
     application.add_handler(MessageHandler(filters.SUCCESSFUL_PAYMENT, successful_payment_handler))
 
