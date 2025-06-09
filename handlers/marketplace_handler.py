@@ -1,7 +1,7 @@
 # handlers/marketplace_handler.py
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, LabeledPrice
 from telegram.ext import ContextTypes
-from storage.ticket_storage import marketplace_data
+from storage.ticket_storage import load_marketplace_data
 from config import logger, PAYMASTER_API_KEY
 
 async def marketplace_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -13,6 +13,8 @@ async def marketplace_handler(update: Update, context: ContextTypes.DEFAULT_TYPE
     – инициировать оплату
     Поддерживает и callback_query, и команду /marketplace.
     """
+    tickets = load_marketplace_data()
+    data = query.data if update.callback_query else "marketplace"
     # 1) Определяем источник вызова
     if update.callback_query:
         query = update.callback_query
@@ -34,13 +36,11 @@ async def marketplace_handler(update: Update, context: ContextTypes.DEFAULT_TYPE
     # 2) Главное меню торговой площадки
     if data == "marketplace":
         buttons = [[InlineKeyboardButton("💳 Продать билет", callback_data="sell_ticket")]]
-        for ticket in marketplace_data:
-            buttons.append([
-                InlineKeyboardButton(
-                    f"{ticket['name']} — {ticket['price']}₽",
-                    callback_data=f"market_details_{ticket['id']}"
-                )
-            ])
+        for t in tickets:
+            buttons.append([InlineKeyboardButton(
+                f"{t['name']} — {t['price']}₽",
+                callback_data=f"market_details_{t['id']}"
+            )])
         buttons.append([InlineKeyboardButton("⬅️ Назад", callback_data="main_menu")])
         markup = InlineKeyboardMarkup(buttons)
         await send("🔎 Торговая площадка:", reply_markup=markup)
